@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#070006" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>万锦🎵留声机 - TP制作</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div id="ph-page">
+      <div class="ph-root">
+        <div class="ph-above">
+          <div class="ph-above-left-col">
+            <div class="ph-clock-full" id="ph-clock-full">--:--:--</div>
+            <div class="ph-above-left">
+              <div class="ph-title">MP3</div>
+              <div class="ph-horn" id="ph-horn" aria-hidden="true">
+                <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="hornGold" x1="0" y1="1" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#7a5a12"/>
+                      <stop offset="42%" stop-color="#c9971f"/>
+                      <stop offset="68%" stop-color="#ffd700"/>
+                      <stop offset="100%" stop-color="#fff2b8"/>
+                    </linearGradient>
+                    <radialGradient id="hornShine" cx="30%" cy="30%" r="70%">
+                      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+                      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+                  <path
+                    d="M 8,52 C 10,44 14,36 22,30 C 30,24 38,20 44,16 A 8,4 0 0 1 50,26 C 42,26 32,32 24,36 C 16,40 11,46 8,52 Z"
+                    fill="url(#hornGold)" stroke="#3a2705" stroke-width="1.2" stroke-linejoin="round"
+                  />
+                  <path
+                    d="M 8,52 C 10,44 14,36 22,30 C 30,24 38,20 44,16 A 8,4 0 0 1 50,26 C 42,26 32,32 24,36 C 16,40 11,46 8,52 Z"
+                    fill="url(#hornShine)"
+                  />
+                  <path d="M 13,44 C 20,38 28,32 36,24" fill="none" stroke="#5c4009" stroke-width="0.8" opacity="0.55"/>
+                  <path d="M 11,48 C 18,42 26,35 34,27" fill="none" stroke="#fff2b8" stroke-width="0.6" opacity="0.4"/>
+                  <ellipse cx="47" cy="21" rx="6.5" ry="3.4" transform="rotate(-32 47 21)" fill="#180d02" opacity="0.85"/>
+                  <ellipse cx="47" cy="21" rx="6.5" ry="3.4" transform="rotate(-32 47 21)" fill="none" stroke="#ffe066" stroke-width="0.8" opacity="0.6"/>
+                  <circle cx="8" cy="52" r="3.4" fill="url(#hornGold)" stroke="#3a2705" stroke-width="1"/>
+                  <circle cx="7.2" cy="51.2" r="1" fill="#fff2b8" opacity="0.6"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="ph-track-info">
+            <div class="ph-track-kicker">♫ 现在播放</div>
+            <div class="ph-track-title" id="ph-track-title">第 01 首 · TP音乐</div>
+          </div>
+          <div class="ph-clock" id="ph-clock">--:--</div>
+        </div>
+
+        <div class="ph-shell">
+          <div class="ph-stage">
+            <canvas class="ph-spectrum" id="ph-spectrum" width="720" height="164"></canvas>
+            <div class="ph-vinyl-wrap">
+              <div class="ph-vinyl" id="ph-vinyl"></div>
+              <div class="ph-label" id="ph-label">
+                <div class="ph-track-num" id="ph-track-num">01/56</div>
+              </div>
+              <div class="ph-arm up" id="ph-arm" aria-hidden="true">
+                <div class="ph-arm-pivot"></div>
+                <div class="ph-arm-rod"></div>
+                <div class="ph-arm-head"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ph-mini">
+            <div class="ph-mini-row">
+              <div class="ph-mini-money">
+                <span class="ph-mini-bal">💰<span id="ph-balance">800</span></span>
+                <span class="ph-mini-bet" id="ph-bet">—$50</span>
+              </div>
+              <div class="ph-reels">
+                <div class="ph-reel" id="ph-r0"><span>7️⃣</span></div>
+                <div class="ph-reel" id="ph-r1"><span>🌸</span></div>
+                <div class="ph-reel" id="ph-r2"><span>🍒</span></div>
+              </div>
+              <button type="button" class="ph-spin" id="ph-spin">SPIN</button>
+            </div>
+            <div class="ph-msg" id="ph-msg"></div>
+          </div>
+        </div>
+
+        <div class="ph-controls">
+          <div class="ph-transport">
+            <div class="ph-btn-group" role="group" aria-label="播放控制">
+              <button type="button" class="ph-btn" id="ph-prev" aria-label="上一首">⏮️</button>
+              <button type="button" class="ph-btn" id="ph-play" aria-label="播放">▶️</button>
+              <button type="button" class="ph-btn" id="ph-pause" aria-label="暂停">⏸️</button>
+              <button type="button" class="ph-btn" id="ph-next" aria-label="下一首">⏭️</button>
+            </div>
+            <div class="ph-btn-group" role="group" aria-label="播放模式">
+              <button type="button" class="ph-btn" id="ph-order" aria-label="顺序播放">🔢</button>
+              <button type="button" class="ph-btn" id="ph-shuffle" aria-label="随机播放">🔀</button>
+            </div>
+          </div>
+          <div class="ph-media-links">
+            <a class="ph-mp4-link" href="https://totp99.github.io/mp4-player/" target="_blank" rel="noopener noreferrer" title="打开 MP4 播放器" aria-label="打开 MP4 播放器">📽️</a>
+            <a class="ph-pdf-link" href="https://totp99.github.io/PDF-book-reader-/" target="_blank" rel="noopener noreferrer" title="打开书架" aria-label="打开书架">📖</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
