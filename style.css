@@ -83,14 +83,6 @@ body {
     width: clamp(34px, 9vw, 46px);
     height: clamp(34px, 9vw, 46px);
   }
-  .ph-mp4-link {
-    margin-left: 14px;
-    font-size: clamp(18px, 5vw, 24px);
-  }
-  .ph-pdf-link {
-    margin-left: 12px;
-    font-size: clamp(18px, 5vw, 24px);
-  }
   .ph-track-info {
     margin-left: auto;
     margin-right: 8px;
@@ -197,14 +189,6 @@ body {
     border-radius: 9px;
     font-size: 19px;
   }
-  .ph-media-links {
-    margin-top: 8px;
-    gap: 20px;
-  }
-  .ph-media-links .ph-mp4-link,
-  .ph-media-links .ph-pdf-link {
-    font-size: clamp(20px, 5.5vw, 26px);
-  }
 }
 
 @media (orientation: portrait) and (max-height: 700px) {
@@ -298,34 +282,6 @@ body {
   animation: horn-sway 3.2s ease-in-out infinite;
   filter: drop-shadow(0 2px 6px rgba(255, 215, 0, 0.12));
 }
-/* MP3 标题 + 喇叭 后面的 mp4-player 入口 */
-.ph-mp4-link {
-  margin-left: 12px;
-  font-size: 16px;
-  line-height: 1;
-  text-decoration: none;
-  white-space: nowrap;
-  opacity: 0.9;
-}
-.ph-mp4-link:active { opacity: 1; transform: scale(0.92); }
-/* PDF 书架入口 */
-.ph-pdf-link {
-  margin-left: 10px;
-  font-size: 16px;
-  line-height: 1;
-  text-decoration: none;
-  white-space: nowrap;
-  opacity: 0.9;
-  appearance: none;
-  -webkit-appearance: none;
-  border: none;
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  cursor: pointer;
-  font-family: inherit;
-}
-.ph-pdf-link:active { opacity: 1; transform: scale(0.92); }
 @-webkit-keyframes horn-sway {
   0%, 100% { transform: rotate(-16deg) translateY(0); }
   50% { transform: rotate(-12deg) translateY(-2px); }
@@ -739,4 +695,112 @@ body {
     0 0 4px rgba(255, 255, 255, 0.22);
   transform: scale(1.08);
   background: rgba(212, 175, 55, 0.12);
+}
+
+/* ===== 仅横屏：三栏“控制台”布局 —— 信息 | 唱片+老虎机 | 播放键，
+   充分利用横向空间，让内容在屏幕高度内完整显示，不再被裁掉一半 ===== */
+@media (orientation: landscape) {
+  #ph-page {
+    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+
+  .ph-root {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    max-width: 100%;
+    transform: none;
+    gap: clamp(6px, 1.8vw, 22px);
+  }
+
+  /* 左栏：时钟 / 标题喇叭 / 曲目信息，纵向堆叠 */
+  .ph-above {
+    flex: 0 0 auto;
+    width: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0;
+    gap: clamp(8px, 2.6vh, 18px);
+  }
+  .ph-clock { display: none; }
+  .ph-track-info { margin: 0; text-align: left; }
+  .ph-track-kicker {
+    font-size: clamp(8px, 1.6vh, 10px);
+    color: var(--gold);
+    letter-spacing: 1px;
+    opacity: 0.8;
+  }
+  .ph-track-title {
+    margin-top: 2px;
+    max-width: clamp(88px, 13vw, 150px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: clamp(10px, 2vh, 13px);
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  /* 中栏：金框——唱片区 + 迷你老虎机，横向并排 */
+  .ph-shell {
+    flex: 0 0 auto;
+    flex-direction: row;
+    width: auto;
+    height: clamp(168px, 78vh, 266px);
+    padding: clamp(5px, 1.2vh, 10px);
+    gap: clamp(5px, 1.2vw, 12px);
+  }
+  .ph-stage {
+    height: 100%;
+    width: clamp(158px, 74vh, 256px);
+    margin: 0;
+    flex: 0 0 auto;
+  }
+  .ph-vinyl-wrap {
+    width: clamp(124px, 56vh, 198px);
+    height: clamp(124px, 56vh, 198px);
+  }
+
+  .ph-mini {
+    flex: 0 0 auto;
+    width: clamp(74px, 9.5vw, 100px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 6px 5px;
+  }
+  .ph-mini-row { flex-direction: column; gap: 5px; }
+  .ph-mini-money { align-items: center; min-width: 0; }
+  .ph-mini-bal { font-size: 10px; }
+  .ph-mini-bet { font-size: 9px; }
+  .ph-reels { flex-direction: column; gap: 4px; }
+  .ph-reel { width: 24px; height: 24px; font-size: 12px; }
+  .ph-spin { align-self: center; width: 32px; height: 32px; font-size: 8px; }
+  .ph-msg { font-size: 9px; }
+
+  /* 右栏：播放键，两组纵向叠放，省高度、留宽度给中栏唱片 */
+  .ph-controls { margin-top: 0; width: auto; flex: 0 0 auto; }
+  .ph-transport {
+    flex-direction: column;
+    max-width: none;
+    gap: clamp(6px, 1.8vh, 14px);
+  }
+  .ph-btn {
+    width: clamp(28px, 4.6vh, 36px);
+    height: clamp(28px, 4.6vh, 36px);
+    font-size: clamp(13px, 2.4vh, 17px);
+  }
+}
+
+/* 更窄的横屏（如小屏手机）再收紧一档，避免右侧按键组被挤出屏幕 */
+@media (orientation: landscape) and (max-width: 700px) {
+  .ph-root { gap: 5px; }
+  .ph-shell { gap: 4px; padding: 4px; }
+  .ph-mini { width: 66px; padding: 5px 4px; }
+  .ph-btn-group { padding: 3px 4px; gap: 1px; }
+  .ph-btn { width: 26px; height: 26px; font-size: 12px; }
 }
