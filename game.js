@@ -120,8 +120,10 @@ function evaluateSpinResult(a, b, c, bet, jackpotValue) {
 }
 
 // ---------- 背景音乐歌单清单 ----------
+// mp3 文件实际托管在另一个仓库（Slot），本页面跨库引用，不在本地存放音频。
 // 加歌方式：把 mp3 文件改名为 1.mp3、2.mp3 …按你想要的播放顺序编号，
-// 放进和 index.html 同一个目录即可，以后无需再改这里的代码。
+// 放进 Slot 库根目录即可，以后无需再改这里的代码。
+const BG_MUSIC_BASE = "https://totp99.github.io/Slot/";
 const BG_MUSIC_MAX = 56; // 支持的最大编号（对应 1.mp3 ~ 56.mp3）
 
 // ---------- 背景音乐（含频谱分析） ----------
@@ -382,7 +384,7 @@ class BGMusic {
     try {
       localStorage.setItem("bgMusicCurrentNum", String(num));
     } catch (e) {}
-    this.audio.src = new URL(`${num}.mp3`, document.baseURI).href;
+    this.audio.src = new URL(`${num}.mp3`, BG_MUSIC_BASE).href;
     this.audio.loop = this.playMode === "single";
     this._notifyTrackChange();
   }
