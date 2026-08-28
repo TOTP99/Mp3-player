@@ -120,11 +120,12 @@ function evaluateSpinResult(a, b, c, bet, jackpotValue) {
 }
 
 // ---------- 背景音乐歌单清单 ----------
-// mp3 文件实际托管在另一个仓库（Slot），本页面跨库引用，不在本地存放音频。
+// mp3 文件实际托管在另一个仓库（source/mp3 目录），本页面跨库引用，不在本地存放音频。
 // 加歌方式：把 mp3 文件改名为 1.mp3、2.mp3 …按你想要的播放顺序编号，
-// 放进 Slot 库根目录即可，以后无需再改这里的代码。
-const BG_MUSIC_BASE = "https://totp99.github.io/Slot/";
-const BG_MUSIC_MAX = 56; // 支持的最大编号（对应 1.mp3 ~ 56.mp3）
+// 放进 source 仓库的 mp3 目录即可，以后无需再改这里的代码
+// （如果文件总数变了，记得同步改下面的 BG_MUSIC_MAX）。
+const BG_MUSIC_BASE = "https://totp99.github.io/source/mp3/";
+const BG_MUSIC_MAX = 99; // 支持的最大编号（对应 1.mp3 ~ 99.mp3），实际数量以 source/mp3 目录为准
 
 // ---------- 背景音乐（含频谱分析） ----------
 class BGMusic {
@@ -455,10 +456,6 @@ class BGMusic {
     localStorage.setItem("bgMusicShuffle", String(this.shuffle));
   }
 
-  setShuffle(enabled) {
-    this.setPlayMode(enabled ? "shuffle" : "order");
-  }
-
   skipNext() {
     this._skipAttempts = 0;
     this._loadTrack(this._pickNext());
@@ -587,7 +584,6 @@ document.addEventListener("visibilitychange", function () {
   var orderChip = document.getElementById("ph-order");
   var shuffleChip = document.getElementById("ph-shuffle");
   var trackNum = document.getElementById("ph-track-num");
-  var clockEl = document.getElementById("ph-clock");
   var clockFullEl = document.getElementById("ph-clock-full");
   var balanceEl = document.getElementById("ph-balance");
   var betEl = document.getElementById("ph-bet");
@@ -619,9 +615,6 @@ document.addEventListener("visibilitychange", function () {
 
   function updateClock() {
     var d = new Date();
-    if (clockEl) {
-      clockEl.textContent = pad2(d.getHours()) + ":" + pad2(d.getMinutes());
-    }
     if (clockFullEl) {
       clockFullEl.textContent =
         pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());

@@ -106,8 +106,6 @@ body {
     color: var(--gold);
     font-weight: 700;
   }
-  .ph-clock { display: none; }
-
   .ph-shell {
     width: 100%;
     padding: 7px 7px 8px;
@@ -290,15 +288,6 @@ body {
   0%, 100% { transform: rotate(-16deg) translateY(0); }
   50% { transform: rotate(-12deg) translateY(-2px); }
 }
-.ph-clock {
-  font-size: 11px;
-  color: var(--gold);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 1px;
-  opacity: 0.85;
-  padding-bottom: 2px;
-}
-
 .ph-shell {
   position: relative;
   width: 100%;
@@ -725,7 +714,6 @@ body {
     padding: 0;
     gap: clamp(8px, 2.6vh, 18px);
   }
-  .ph-clock { display: none; }
   .ph-track-info { margin: 0; text-align: left; }
   .ph-track-kicker {
     font-size: clamp(8px, 1.6vh, 10px);
@@ -760,8 +748,8 @@ body {
     flex: 0 0 auto;
   }
   .ph-vinyl-wrap {
-    width: clamp(124px, 56vh, 198px);
-    height: clamp(124px, 56vh, 198px);
+    width: clamp(109px, 49.3vh, 174px);
+    height: clamp(109px, 49.3vh, 174px);
   }
 
   .ph-mini {
