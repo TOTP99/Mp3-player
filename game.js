@@ -6,13 +6,13 @@
 
 // ---------- 符号表（与横屏老虎机保持一致，赔率/图案不独立维护一份）----------
 const SYMBOLS = [
-  { key: "seven", label: "7️⃣", color: "#ff2d2d", multiplier: 50 },
-  { key: "blossom", label: "🌸", color: "#ff8fab", multiplier: 20 },
-  { key: "hibiscus", label: "🌺", color: "#ff4d6d", multiplier: 15 },
-  { key: "grape", label: "🍇", color: "#9b5de5", multiplier: 10 },
-  { key: "strawberry", label: "🍓", color: "#ff2d55", multiplier: 8 },
-  { key: "cherry", label: "🍒", color: "#e63946", multiplier: 6 },
-  { key: "mushroom", label: "🍄", color: "#c77dff", multiplier: 4 },
+  { key: "seven", label: "7️⃣", multiplier: 50 },
+  { key: "blossom", label: "🌸", multiplier: 20 },
+  { key: "hibiscus", label: "🌺", multiplier: 15 },
+  { key: "grape", label: "🍇", multiplier: 10 },
+  { key: "strawberry", label: "🍓", multiplier: 8 },
+  { key: "cherry", label: "🍒", multiplier: 6 },
+  { key: "mushroom", label: "🍄", multiplier: 4 },
 ];
 
 // ---------- 中奖概率表（结果导向，与横屏老虎机口径一致）----------
@@ -166,8 +166,6 @@ class BGMusic {
 
     this.bands = [0, 0, 0, 0, 0];
     this.energy = 0;
-    this.brightness = 0;
-    this.vocalBias = 0;
     this._playing = false;
     this._bandBins = null;
     this._analyserFailed = false;
@@ -305,8 +303,6 @@ class BGMusic {
     if (!playing) {
       for (let i = 0; i < 5; i++) this.bands[i] *= 0.88;
       this.energy *= 0.9;
-      this.brightness *= 0.92;
-      this.vocalBias *= 0.92;
       return this.bands;
     }
 
@@ -337,15 +333,6 @@ class BGMusic {
           this.bands[4]) *
         0.2;
       this.energy = this.energy * 0.6 + e * 0.4;
-
-      const bright =
-        (this.bands[3] * 0.45 + this.bands[4] * 0.55) /
-        (this.bands[0] * 0.5 + this.bands[1] * 0.3 + 0.15);
-      this.brightness =
-        this.brightness * 0.7 + (bright > 1.4 ? 1.4 : bright) * 0.3;
-
-      this.vocalBias =
-        this.vocalBias * 0.75 + (this.bands[3] - this.bands[1]) * 0.25;
     } else {
       const t = performance.now() * 0.001;
       const pulse = 0.35 + 0.25 * Math.sin(t * 4.2);
@@ -360,8 +347,6 @@ class BGMusic {
       this.bands[3] = this.bands[3] * 0.7 + raw3 * 0.3;
       this.bands[4] = this.bands[4] * 0.7 + raw4 * 0.3;
       this.energy = this.energy * 0.7 + pulse * 0.3;
-      this.brightness = 0.5;
-      this.vocalBias = 0;
     }
 
     return this.bands;
