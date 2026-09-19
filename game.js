@@ -240,9 +240,24 @@ class BGMusic {
         this._source = this.ctx.createMediaElementSource(this.audio);
         this._gain = this.ctx.createGain();
         this._gain.gain.value = 1;
+        // 频谱：直连 analyser（不经增强，避免影响可视化）
         this._source.connect(this.analyser);
-        this._source.connect(this._gain);
+        // 听感：经 audio-enhance.js（滤波 + 压缩 + AGC）再进主增益
         this._gain.connect(this.ctx.destination);
+        if (typeof createAudioEnhancer === "function") {
+          try {
+            this._enhancer = createAudioEnhancer(this.ctx);
+            if (this._enhancer) {
+              this._enhancer.connectFrom(this._source, this._gain);
+            } else {
+              this._source.connect(this._gain);
+            }
+          } catch (eEnh) {
+            this._source.connect(this._gain);
+          }
+        } else {
+          this._source.connect(this._gain);
+        }
       }
       this._connected = true;
       return true;
@@ -371,7 +386,13 @@ class BGMusic {
       localStorage.setItem("bgMusicCurrentNum", String(num));
     } catch (e) {}
     this.audio.src = new URL(`${num}.mp3`, BG_MUSIC_BASE).href;
-    this.audio.loop = this.playMode === "single";
+    this.audio.loop = false;
+    // 切歌重置 AGC，避免沿用上一首增益造成音量跳变
+    if (this._enhancer && typeof this._enhancer.resetAgc === "function") {
+      try {
+        this._enhancer.resetAgc();
+      } catch (e) {}
+    }
     this._notifyTrackChange();
   }
 
@@ -568,6 +589,7 @@ document.addEventListener("visibilitychange", function () {
   var nextBtn = document.getElementById("ph-next");
   var orderChip = document.getElementById("ph-order");
   var shuffleChip = document.getElementById("ph-shuffle");
+  var trackNum = document.getElementById("ph-track-num");
   var clockFullEl = document.getElementById("ph-clock-full");
   var balanceEl = document.getElementById("ph-balance");
   var betEl = document.getElementById("ph-bet");
@@ -606,6 +628,10 @@ document.addEventListener("visibilitychange", function () {
   }
 
   function syncTrack() {
+    if (trackNum) {
+      trackNum.textContent =
+        pad2(bgMusic.currentNum) + "/" + pad2(BG_MUSIC_MAX);
+    }
     var trackTitle = document.getElementById("ph-track-title");
     if (trackTitle) {
       trackTitle.textContent =
@@ -831,8 +857,8 @@ document.addEventListener("visibilitychange", function () {
     if (!vinyl) return;
     var playing = bgMusic.isPlaying();
     var energy = bgMusic.energy || 0;
-    var targetVel = playing ? 3.2 + energy * 1.6 : 0;
-    vinylVel += (targetVel - vinylVel) * (playing ? 0.07 : 0.09);
+    var targetVel = playing ? 1.8 + energy * 1.2 : 0;
+    vinylVel += (targetVel - vinylVel) * (playing ? 0.06 : 0.08);
     if (Math.abs(vinylVel) < 0.002) vinylVel = 0;
     vinylAngle = (vinylAngle + vinylVel) % 360;
     vinyl.style.transform = "rotate(" + vinylAngle.toFixed(2) + "deg)";
