@@ -63,10 +63,12 @@
           <div class="ph-stage">
             <canvas class="ph-spectrum" id="ph-spectrum" width="720" height="164"></canvas>
             <div class="ph-vinyl-wrap">
-              <div class="ph-vinyl" id="ph-vinyl"></div>
-              <div class="ph-label" id="ph-label">
-                <div class="ph-track-num" id="ph-track-num">01/99</div>
+              <div class="ph-vinyl" id="ph-vinyl">
+                <div class="ph-label" id="ph-label">
+                  <div class="ph-label-dot" aria-hidden="true"></div>
+                </div>
               </div>
+              <div class="ph-vinyl-sheen" aria-hidden="true"></div>
               <div class="ph-arm up" id="ph-arm" aria-hidden="true">
                 <div class="ph-arm-pivot"></div>
                 <div class="ph-arm-rod"></div>
@@ -109,7 +111,6 @@
       </div>
     </div>
 
-    <script src="audio-enhance.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
