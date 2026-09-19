@@ -143,8 +143,9 @@ class BGMusic {
 
     const savedMode = localStorage.getItem("bgMusicPlayMode");
     const savedShuffleLegacy = localStorage.getItem("bgMusicShuffle") === "true";
+    // 仅保留顺序 / 随机；旧版 single、all 自动回退为顺序
     let mode = savedMode || (savedShuffleLegacy ? "shuffle" : "order");
-    if (mode !== "order" && mode !== "shuffle" && mode !== "single" && mode !== "all") {
+    if (mode !== "order" && mode !== "shuffle") {
       mode = "order";
     }
     this.playMode = mode;
@@ -371,7 +372,7 @@ class BGMusic {
       localStorage.setItem("bgMusicCurrentNum", String(num));
     } catch (e) {}
     this.audio.src = new URL(`${num}.mp3`, BG_MUSIC_BASE).href;
-    this.audio.loop = this.playMode === "single";
+    this.audio.loop = false;
     this._notifyTrackChange();
   }
 
@@ -390,11 +391,8 @@ class BGMusic {
     }
   }
 
-  // order: 顺序到尽头后停；all: 顺序循环；shuffle: 随机；single: 单曲循环
+  // order: 顺序到尽头后停；shuffle: 随机下一首
   _pickNext() {
-    if (this.playMode === "single") {
-      return this.currentNum;
-    }
     if (this.playMode === "shuffle") {
       if (BG_MUSIC_MAX <= 1) return 1;
       let next;
@@ -403,6 +401,7 @@ class BGMusic {
       } while (next === this.currentNum);
       return next;
     }
+    // order：手动下一首时末尾回到 1；播完到末尾由 _advance 停播
     return this.currentNum >= BG_MUSIC_MAX ? 1 : this.currentNum + 1;
   }
 
@@ -411,14 +410,10 @@ class BGMusic {
     if (this._skipAttempts > BG_MUSIC_MAX) {
       return;
     }
+    // 顺序播放：播完最后一首回到第 1 首并暂停
     if (this.playMode === "order" && this.currentNum >= BG_MUSIC_MAX) {
       this._loadTrack(1);
       this.pause();
-      return;
-    }
-    if (this.playMode === "single") {
-      this.audio.currentTime = 0;
-      if (this.enabled) this._playAudio();
       return;
     }
     this._loadTrack(this._pickNext());
@@ -426,17 +421,12 @@ class BGMusic {
   }
 
   setPlayMode(mode) {
-    if (
-      mode !== "order" &&
-      mode !== "shuffle" &&
-      mode !== "single" &&
-      mode !== "all"
-    ) {
+    if (mode !== "order" && mode !== "shuffle") {
       mode = "order";
     }
     this.playMode = mode;
     this.shuffle = mode === "shuffle";
-    this.audio.loop = mode === "single";
+    this.audio.loop = false;
     localStorage.setItem("bgMusicPlayMode", mode);
     localStorage.setItem("bgMusicShuffle", String(this.shuffle));
   }
@@ -647,12 +637,18 @@ document.addEventListener("visibilitychange", function () {
     return null;
   }
 
+  /** 与横屏共用存档：merge 写入，避免冲掉 lastWin / mode / sfxEnabled 等字段 */
   function writeSave(bal, bet, jackpotValue) {
     try {
-      localStorage.setItem(
-        "wanjin_slot_save",
-        JSON.stringify({ balance: bal, bet: bet, jackpotValue: jackpotValue }),
-      );
+      var prev = readSave();
+      var next =
+        prev && typeof prev === "object" && !Array.isArray(prev)
+          ? Object.assign({}, prev)
+          : {};
+      next.balance = bal;
+      next.bet = bet;
+      next.jackpotValue = jackpotValue;
+      localStorage.setItem("wanjin_slot_save", JSON.stringify(next));
     } catch (e) {}
   }
 
