@@ -568,7 +568,6 @@ document.addEventListener("visibilitychange", function () {
   var nextBtn = document.getElementById("ph-next");
   var orderChip = document.getElementById("ph-order");
   var shuffleChip = document.getElementById("ph-shuffle");
-  var trackNum = document.getElementById("ph-track-num");
   var clockFullEl = document.getElementById("ph-clock-full");
   var balanceEl = document.getElementById("ph-balance");
   var betEl = document.getElementById("ph-bet");
@@ -607,10 +606,6 @@ document.addEventListener("visibilitychange", function () {
   }
 
   function syncTrack() {
-    if (trackNum) {
-      trackNum.textContent =
-        pad2(bgMusic.currentNum) + "/" + pad2(BG_MUSIC_MAX);
-    }
     var trackTitle = document.getElementById("ph-track-title");
     if (trackTitle) {
       trackTitle.textContent =
@@ -836,7 +831,6 @@ document.addEventListener("visibilitychange", function () {
     if (!vinyl) return;
     var playing = bgMusic.isPlaying();
     var energy = bgMusic.energy || 0;
-    // 保底转速抬高，安静时也能看出在转；响度再叠一层
     var targetVel = playing ? 3.2 + energy * 1.6 : 0;
     vinylVel += (targetVel - vinylVel) * (playing ? 0.07 : 0.09);
     if (Math.abs(vinylVel) < 0.002) vinylVel = 0;

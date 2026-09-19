@@ -345,7 +345,6 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  /* 纹路加粗、对比加大，转起来肉眼可见 */
   background:
     repeating-radial-gradient(
       circle at 50% 50%,
@@ -367,7 +366,6 @@ body {
   will-change: transform;
   overflow: hidden;
 }
-/* 随盘转动的分隔环（多一圈可见参考） */
 .ph-vinyl::before {
   content: "";
   position: absolute;
@@ -398,7 +396,6 @@ body {
     0 0 24px rgba(255, 140, 66, 0.08),
     inset 0 0 36px rgba(0, 0, 0, 0.85);
 }
-/* 固定高光：不随黑胶转，形成扫光感 */
 .ph-vinyl-sheen {
   position: absolute;
   inset: 0;
@@ -420,6 +417,7 @@ body {
     );
   mix-blend-mode: soft-light;
 }
+/* 盘心：无曲号、无斜条，仅偏心圆点 */
 .ph-label {
   position: absolute;
   left: 50%;
@@ -431,10 +429,6 @@ body {
   background:
     radial-gradient(circle at 40% 35%, #4a3410 0%, #2a1c08 45%, #100804 78%);
   border: 1.5px solid var(--gold);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   z-index: 2;
   box-shadow:
     0 0 6px rgba(255, 215, 0, 0.12),
@@ -442,32 +436,16 @@ body {
   transition: box-shadow 0.4s ease;
   overflow: hidden;
 }
-/* 不对称标记：斜条 + 小圆点，转起来方位感强 */
-.ph-label-mark {
+.ph-label-dot {
   position: absolute;
-  inset: 0;
+  top: 16%;
+  right: 22%;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   pointer-events: none;
-  background:
-    linear-gradient(
-      118deg,
-      transparent 42%,
-      rgba(255, 215, 0, 0.35) 49%,
-      rgba(255, 230, 160, 0.5) 51%,
-      transparent 58%
-    );
-  opacity: 0.9;
-}
-.ph-label-mark::after {
-  content: "";
-  position: absolute;
-  top: 14%;
-  right: 22%;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #ffe9a0, #c9a227 70%);
-  box-shadow: 0 0 4px rgba(255, 215, 0, 0.45);
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
 }
 .ph-label.playing {
   box-shadow:
@@ -484,15 +462,6 @@ body {
 @keyframes label-pulse {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   50% { transform: translate(-50%, -50%) scale(1.03); }
-}
-.ph-track-num {
-  position: relative;
-  z-index: 1;
-  font-size: 12px;
-  font-weight: bold;
-  color: var(--gold);
-  line-height: 1.1;
-  letter-spacing: 0.5px;
 }
 
 .ph-arm {

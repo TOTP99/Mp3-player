@@ -63,11 +63,10 @@
           <div class="ph-stage">
             <canvas class="ph-spectrum" id="ph-spectrum" width="720" height="164"></canvas>
             <div class="ph-vinyl-wrap">
-              <!-- 纹路 + 标签一起转；高光层不转，形成「光扫过盘面」 -->
               <div class="ph-vinyl" id="ph-vinyl">
                 <div class="ph-label" id="ph-label">
-                  <div class="ph-label-mark" aria-hidden="true"></div>
-                  <div class="ph-track-num" id="ph-track-num">01/99</div>
+                  <!-- 盘心仅偏心圆点，无曲号、无斜条；曲号在上方「现在播放」 -->
+                  <div class="ph-label-dot" aria-hidden="true"></div>
                 </div>
               </div>
               <div class="ph-vinyl-sheen" aria-hidden="true"></div>
