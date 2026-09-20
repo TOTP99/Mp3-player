@@ -141,7 +141,7 @@
      * source 仍可另外 connect 到频谱 analyser
      */
     function connectFrom(source, destination) {
-      if (!source || !destination || connected) return;
+      if (!source || !destination || connected) return connected;
       try {
         source.connect(highpass);
         highpass.connect(lowpass);
@@ -154,6 +154,7 @@
       } catch (e) {
         connected = false;
       }
+      return connected;
     }
 
     function setEnabled(on) {

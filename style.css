@@ -221,6 +221,21 @@ body {
   transform: scale(0.85);
   -webkit-transform-origin: center center;
   transform-origin: center center;
+  -webkit-transition:
+    opacity 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
+    -webkit-transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition:
+    opacity 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+  opacity: 1;
+}
+.ph-root.ph-orienting {
+  opacity: 0.28;
+  -webkit-transform: scale(0.94) !important;
+  transform: scale(0.94) !important;
+  pointer-events: none;
 }
 
 .ph-above {
@@ -307,6 +322,18 @@ body {
   box-shadow:
     0 0 0 1px rgba(255, 215, 0, 0.06),
     inset 0 0 12px rgba(255, 215, 0, 0.02);
+  -webkit-transition:
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    padding 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-radius 0.3s ease;
+  transition:
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    padding 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-radius 0.3s ease;
 }
 
 .ph-stage {
@@ -318,6 +345,12 @@ body {
   justify-content: center;
   margin: 0 0 6px;
   perspective: 800px;
+  -webkit-transition:
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition:
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 /* 横向彩虹心电波形：铺满播放器横向区域，唱片本身位于其上方会自然遮住中间部分 */
@@ -331,6 +364,8 @@ body {
   pointer-events: none;
   z-index: 0;
   overflow: visible;
+  -webkit-transition: height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .ph-vinyl-wrap {
@@ -340,6 +375,12 @@ body {
   z-index: 1;
   transform-style: preserve-3d;
   transform: rotateX(14deg);
+  -webkit-transition:
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition:
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .ph-vinyl {
   width: 100%;
@@ -422,8 +463,8 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 36%;
-  height: 36%;
+  width: 28.8%;
+  height: 28.8%;
   border-radius: 50%;
   background:
     radial-gradient(circle at 40% 35%, #4a3410 0%, #2a1c08 45%, #100804 78%);
@@ -439,8 +480,8 @@ body {
   position: absolute;
   top: 16%;
   right: 22%;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   pointer-events: none;
   background: radial-gradient(circle at 30% 30%, #ffe9a0, #c9a227 70%);
@@ -471,7 +512,10 @@ body {
   height: 42%;
   z-index: 4;
   transform-origin: 92% 12%;
-  transition: transform 0.55s cubic-bezier(0.34, 1.3, 0.64, 1);
+  transition:
+    transform 0.55s cubic-bezier(0.34, 1.3, 0.64, 1),
+    top 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    right 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
   pointer-events: none;
 }
 .ph-arm-pivot {
@@ -525,6 +569,14 @@ body {
   background:
     linear-gradient(180deg, rgba(26, 13, 2, 0.95) 0%, rgba(8, 0, 4, 0.98) 100%);
   box-shadow: inset 0 0 8px rgba(255, 215, 0, 0.025);
+  -webkit-transition:
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    padding 0.3s ease;
+  transition:
+    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    padding 0.3s ease;
 }
 .ph-mini-row {
   display: flex;
@@ -712,12 +764,11 @@ body {
   background: rgba(212, 175, 55, 0.12);
 }
 
-/* ===== 仅横屏：三栏“控制台”布局 —— 信息 | 唱片+老虎机 | 播放键，
-   充分利用横向空间，让内容在屏幕高度内完整显示，不再被裁掉一半 ===== */
+/* 横屏：三栏布局；尺寸由 JS 写入 --ph-shell-h 等，clamp 为回退 */
 @media (orientation: landscape) {
   #ph-page {
-    padding: max(6px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
-      max(6px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    padding: max(4px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+      max(4px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   }
 
   .ph-root {
@@ -726,8 +777,9 @@ body {
     justify-content: center;
     width: auto;
     max-width: 100%;
+    max-height: 100%;
     transform: none;
-    gap: clamp(6px, 1.8vw, 22px);
+    gap: clamp(4px, 1.4vw, 18px);
   }
 
   /* 左栏：时钟 / 标题喇叭 / 曲目信息，纵向堆叠 */
@@ -738,22 +790,22 @@ body {
     align-items: flex-start;
     justify-content: center;
     padding: 0;
-    gap: clamp(8px, 2.6vh, 18px);
+    gap: clamp(6px, 2vh, 14px);
   }
   .ph-track-info { margin: 0; text-align: left; }
   .ph-track-kicker {
-    font-size: clamp(8px, 1.6vh, 10px);
+    font-size: clamp(8px, 1.5vh, 10px);
     color: var(--gold);
     letter-spacing: 1px;
     opacity: 0.8;
   }
   .ph-track-title {
     margin-top: 2px;
-    max-width: clamp(88px, 13vw, 150px);
+    max-width: clamp(80px, 12vw, 140px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: clamp(10px, 2vh, 13px);
+    font-size: clamp(9px, 1.8vh, 12px);
     color: var(--gold);
     font-weight: 700;
   }
@@ -763,58 +815,67 @@ body {
     flex: 0 0 auto;
     flex-direction: row;
     width: auto;
-    height: clamp(168px, 78vh, 266px);
-    padding: clamp(5px, 1.2vh, 10px);
-    gap: clamp(5px, 1.2vw, 12px);
+    height: var(--ph-shell-h, clamp(140px, 72vh, 240px));
+    padding: var(--ph-shell-pad, clamp(4px, 1vh, 8px));
+    gap: clamp(4px, 1vw, 10px);
+    overflow: visible;
   }
   .ph-stage {
     height: 100%;
-    width: clamp(158px, 74vh, 256px);
+    width: var(--ph-stage, clamp(130px, 68vh, 220px));
     margin: 0;
     flex: 0 0 auto;
   }
   .ph-vinyl-wrap {
-    width: clamp(109px, 49.3vh, 174px);
-    height: clamp(109px, 49.3vh, 174px);
+    width: var(--ph-vinyl, clamp(96px, 46vh, 150px));
+    height: var(--ph-vinyl, clamp(96px, 46vh, 150px));
+  }
+
+  .ph-spectrum {
+    height: var(--ph-spec-h, clamp(40px, 18vh, 72px));
+  }
+
+  .ph-arm {
+    top: var(--ph-arm-top, 7%);
+    right: var(--ph-arm-right, 1%);
   }
 
   .ph-mini {
     flex: 0 0 auto;
-    width: clamp(74px, 9.5vw, 100px);
+    width: clamp(68px, 9vw, 96px);
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 6px 5px;
+    padding: 5px 4px;
   }
   .ph-mini-row { flex-direction: column; gap: 5px; }
   .ph-mini-money { align-items: center; min-width: 0; }
   .ph-mini-bal { font-size: 10px; }
   .ph-mini-bet { font-size: 9px; }
   .ph-reels { flex-direction: column; gap: 4px; }
-  .ph-reel { width: 24px; height: 24px; font-size: 12px; }
+  .ph-reel { width: 26px; height: 26px; font-size: 13px; }
   .ph-spin { align-self: center; width: 32px; height: 32px; font-size: 8px; }
-  .ph-msg { font-size: 9px; }
+  .ph-msg { font-size: 8px; margin-top: 3px; }
 
-  /* 右栏：播放键，两组纵向叠放，省高度、留宽度给中栏唱片 */
   .ph-controls { margin-top: 0; width: auto; flex: 0 0 auto; }
   .ph-transport {
     flex-direction: column;
     max-width: none;
-    gap: clamp(6px, 1.8vh, 14px);
+    gap: clamp(5px, 1.5vh, 12px);
   }
   .ph-btn {
-    width: clamp(28px, 4.6vh, 36px);
-    height: clamp(28px, 4.6vh, 36px);
-    font-size: clamp(13px, 2.4vh, 17px);
+    width: clamp(26px, 4.2vh, 34px);
+    height: clamp(26px, 4.2vh, 34px);
+    font-size: clamp(12px, 2.2vh, 16px);
   }
 }
 
 /* 更窄的横屏（如小屏手机）再收紧一档，避免右侧按键组被挤出屏幕 */
 @media (orientation: landscape) and (max-width: 700px) {
-  .ph-root { gap: 5px; }
-  .ph-shell { gap: 4px; padding: 4px; }
-  .ph-mini { width: 66px; padding: 5px 4px; }
-  .ph-btn-group { padding: 3px 4px; gap: 1px; }
-  .ph-btn { width: 26px; height: 26px; font-size: 12px; }
+  .ph-root { gap: 4px; }
+  .ph-shell { gap: 3px; padding: 3px; }
+  .ph-mini { width: 60px; padding: 4px 3px; }
+  .ph-btn-group { padding: 2px 3px; gap: 1px; }
+  .ph-btn { width: 24px; height: 24px; font-size: 11px; }
 }
