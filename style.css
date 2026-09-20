@@ -222,19 +222,19 @@ body {
   -webkit-transform-origin: center center;
   transform-origin: center center;
   -webkit-transition:
-    opacity 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
-    -webkit-transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+    opacity 0.4s cubic-bezier(0.22, 1.05, 0.28, 1),
+    -webkit-transform 0.45s cubic-bezier(0.22, 1.12, 0.28, 1),
+    gap 0.4s cubic-bezier(0.22, 1.05, 0.28, 1);
   transition:
-    opacity 0.32s cubic-bezier(0.22, 0.61, 0.36, 1),
-    transform 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+    opacity 0.4s cubic-bezier(0.22, 1.05, 0.28, 1),
+    transform 0.45s cubic-bezier(0.22, 1.12, 0.28, 1),
+    gap 0.4s cubic-bezier(0.22, 1.05, 0.28, 1);
   opacity: 1;
 }
 .ph-root.ph-orienting {
-  opacity: 0.28;
-  -webkit-transform: scale(0.94) !important;
-  transform: scale(0.94) !important;
+  opacity: 0.52;
+  -webkit-transform: scale(0.975) !important;
+  transform: scale(0.975) !important;
   pointer-events: none;
 }
 
@@ -323,17 +323,67 @@ body {
     0 0 0 1px rgba(255, 215, 0, 0.06),
     inset 0 0 12px rgba(255, 215, 0, 0.02);
   -webkit-transition:
-    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    padding 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    border-radius 0.3s ease;
+    height 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    width 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    padding 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    gap 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    border-radius 0.3s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
   transition:
-    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    padding 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    gap 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    border-radius 0.3s ease;
+    height 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    width 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    padding 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    gap 0.42s cubic-bezier(0.22, 1.05, 0.28, 1),
+    border-radius 0.3s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+@-webkit-keyframes ph-rim-glow {
+  0% {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 1px rgba(255, 215, 0, 0.06),
+      inset 0 0 12px rgba(255, 215, 0, 0.02);
+  }
+  35% {
+    border-color: #ffe9a0;
+    box-shadow:
+      0 0 0 1px rgba(255, 230, 150, 0.28),
+      0 0 16px rgba(255, 215, 0, 0.16),
+      inset 0 0 14px rgba(255, 215, 0, 0.06);
+  }
+  100% {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 1px rgba(255, 215, 0, 0.06),
+      inset 0 0 12px rgba(255, 215, 0, 0.02);
+  }
+}
+@keyframes ph-rim-glow {
+  0% {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 1px rgba(255, 215, 0, 0.06),
+      inset 0 0 12px rgba(255, 215, 0, 0.02);
+  }
+  35% {
+    border-color: #ffe9a0;
+    box-shadow:
+      0 0 0 1px rgba(255, 230, 150, 0.28),
+      0 0 16px rgba(255, 215, 0, 0.16),
+      inset 0 0 14px rgba(255, 215, 0, 0.06);
+  }
+  100% {
+    border-color: var(--gold);
+    box-shadow:
+      0 0 0 1px rgba(255, 215, 0, 0.06),
+      inset 0 0 12px rgba(255, 215, 0, 0.02);
+  }
+}
+.ph-shell.ph-shell-flash {
+  -webkit-animation: ph-rim-glow 0.58s cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation: ph-rim-glow 0.58s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .ph-stage {

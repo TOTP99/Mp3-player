@@ -1078,7 +1078,7 @@ document.addEventListener("visibilitychange", function () {
     });
   }
 
-  // 方向变化：淡出 → 重算布局 → 回弹；同向 resize 只静默适配
+  // 方向变化：唱针抬起 → 轻淡出 → 重算布局 → 金边闪 + 回弹；同向 resize 只静默适配
   function onOrientationSmooth() {
     var nowOrient =
       window.matchMedia && window.matchMedia("(orientation: landscape)").matches
@@ -1095,16 +1095,33 @@ document.addEventListener("visibilitychange", function () {
     }
     lastOrient = nowOrient;
     if (orientTimer) clearTimeout(orientTimer);
+
+    var shell = phRoot.querySelector(".ph-shell");
+    if (arm) {
+      arm.classList.add("up");
+      arm.classList.remove("down");
+      lastPlaying = null;
+    }
     phRoot.classList.add("ph-orienting");
+
     orientTimer = setTimeout(function () {
       fitLandscapeLayout();
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           phRoot.classList.remove("ph-orienting");
+          if (shell) {
+            shell.classList.remove("ph-shell-flash");
+            void shell.offsetWidth;
+            shell.classList.add("ph-shell-flash");
+          }
+          setTimeout(function () {
+            syncPlayUi();
+            if (shell) shell.classList.remove("ph-shell-flash");
+          }, 580);
         });
       });
       orientTimer = 0;
-    }, 160);
+    }, 180);
   }
 
   fitLandscapeLayout();
