@@ -240,8 +240,26 @@ class BGMusic {
         this._source = this.ctx.createMediaElementSource(this.audio);
         this._gain = this.ctx.createGain();
         this._gain.gain.value = 1;
+        // 频谱直连 source，不受增强链影响
         this._source.connect(this.analyser);
-        this._source.connect(this._gain);
+        // 听感增强：高通/低通/压缩/AGC → 主增益 → 扬声器
+        if (
+          typeof createAudioEnhancer === "function" &&
+          !this._enhancer
+        ) {
+          try {
+            this._enhancer = createAudioEnhancer(this.ctx);
+            if (this._enhancer) {
+              this._enhancer.connectFrom(this._source, this._gain);
+            }
+          } catch (e) {
+            this._enhancer = null;
+          }
+        }
+        if (!this._enhancer) {
+          // 无增强模块时直通
+          this._source.connect(this._gain);
+        }
         this._gain.connect(this.ctx.destination);
       }
       this._connected = true;
@@ -372,6 +390,12 @@ class BGMusic {
     } catch (e) {}
     this.audio.src = new URL(`${num}.mp3`, BG_MUSIC_BASE).href;
     this.audio.loop = this.playMode === "single";
+    // 切歌重置 AGC，避免沿用上一首增益
+    if (this._enhancer && typeof this._enhancer.resetAgc === "function") {
+      try {
+        this._enhancer.resetAgc();
+      } catch (e) {}
+    }
     this._notifyTrackChange();
   }
 
@@ -1004,6 +1028,128 @@ document.addEventListener("visibilitychange", function () {
   updateClock();
   syncWallet();
   syncPlayUi();
+
+  // ---------- 横屏自动适配：根据可用高度计算唱片机尺寸，保证上下沿可见 ----------
+  function fitLandscapeLayout() {
+    var root = document.documentElement;
+    var isLandscape =
+      window.matchMedia &&
+      window.matchMedia("(orientation: landscape)").matches;
+    if (!isLandscape) {
+      root.style.removeProperty("--ph-shell-h");
+      root.style.removeProperty("--ph-vinyl");
+      root.style.removeProperty("--ph-stage");
+      root.style.removeProperty("--ph-shell-pad");
+      root.style.removeProperty("--ph-spec-h");
+      root.style.removeProperty("--ph-arm-top");
+      root.style.removeProperty("--ph-arm-right");
+      return;
+    }
+
+    var page = document.getElementById("ph-page");
+    var availH = page
+      ? page.clientHeight
+      : window.innerHeight || document.documentElement.clientHeight;
+    // 预留上下呼吸空间（safe-area 已在 CSS padding 中）
+    var usable = Math.max(100, availH - 12);
+
+    // 金框高度：约 78% 可用高度，限制上下限
+    var shellH = Math.round(Math.min(240, Math.max(120, usable * 0.78)));
+    var pad = Math.max(3, Math.min(8, Math.round(shellH * 0.035)));
+    // 唱片直径：金框内高度扣 padding 后约 88%
+    var vinyl = Math.round((shellH - pad * 2) * 0.88);
+    vinyl = Math.max(80, Math.min(160, vinyl));
+    // stage 略大于唱片，给唱针留空间
+    var stage = Math.round(vinyl * 1.42);
+    stage = Math.max(110, Math.min(220, stage));
+    // 频谱高度随唱片缩放（矮屏更矮，避免与唱针抢空间）
+    var specH = Math.round(Math.min(72, Math.max(40, vinyl * 0.42)));
+    // 矮横屏时唱针略往内收
+    var armTop = vinyl < 120 ? "5%" : "7%";
+    var armRight = vinyl < 120 ? "0%" : "1%";
+
+    root.style.setProperty("--ph-shell-h", shellH + "px");
+    root.style.setProperty("--ph-vinyl", vinyl + "px");
+    root.style.setProperty("--ph-stage", stage + "px");
+    root.style.setProperty("--ph-shell-pad", pad + "px");
+    root.style.setProperty("--ph-spec-h", specH + "px");
+    root.style.setProperty("--ph-arm-top", armTop);
+    root.style.setProperty("--ph-arm-right", armRight);
+  }
+
+  var fitRaf = 0;
+  var orientTimer = 0;
+  var lastOrient =
+    window.matchMedia && window.matchMedia("(orientation: landscape)").matches
+      ? "landscape"
+      : "portrait";
+
+  function scheduleFit() {
+    if (fitRaf) cancelAnimationFrame(fitRaf);
+    fitRaf = requestAnimationFrame(function () {
+      fitRaf = 0;
+      fitLandscapeLayout();
+    });
+  }
+
+  /** 横竖屏切换：先淡出缩小，再重算布局，再淡入回弹 */
+  function onOrientationSmooth() {
+    var nowOrient =
+      window.matchMedia && window.matchMedia("(orientation: landscape)").matches
+        ? "landscape"
+        : "portrait";
+    var phRoot = document.querySelector(".ph-root");
+    if (!phRoot) {
+      scheduleFit();
+      return;
+    }
+
+    // 仅方向真正变化时才走动画；纯 resize 只静默适配
+    if (nowOrient === lastOrient) {
+      scheduleFit();
+      return;
+    }
+    lastOrient = nowOrient;
+
+    if (orientTimer) clearTimeout(orientTimer);
+    phRoot.classList.add("ph-orienting");
+
+    orientTimer = setTimeout(function () {
+      fitLandscapeLayout();
+      // 等布局写完一帧再去掉 class，触发回弹过渡
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          phRoot.classList.remove("ph-orienting");
+        });
+      });
+      orientTimer = 0;
+    }, 160);
+  }
+
+  fitLandscapeLayout();
+  window.addEventListener("resize", onOrientationSmooth);
+  window.addEventListener("orientationchange", function () {
+    // 部分机型 orientationchange 时尺寸尚未更新，稍等再测
+    setTimeout(onOrientationSmooth, 60);
+    setTimeout(onOrientationSmooth, 200);
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", onOrientationSmooth);
+  }
+  if (window.matchMedia) {
+    try {
+      window
+        .matchMedia("(orientation: landscape)")
+        .addEventListener("change", onOrientationSmooth);
+    } catch (e) {
+      // 旧 WebKit 用 addListener
+      try {
+        window
+          .matchMedia("(orientation: landscape)")
+          .addListener(onOrientationSmooth);
+      } catch (e2) {}
+    }
+  }
 
   // 独立页面：加载后立即启动（无需等待横竖屏切换）
   startPh();
