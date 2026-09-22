@@ -97,14 +97,34 @@
         <div class="ph-controls">
           <div class="ph-transport">
             <div class="ph-btn-group" role="group" aria-label="播放控制">
-              <button type="button" class="ph-btn" id="ph-prev" aria-label="上一首">⏮️</button>
-              <button type="button" class="ph-btn" id="ph-play" aria-label="播放">▶️</button>
-              <button type="button" class="ph-btn" id="ph-pause" aria-label="暂停">⏸️</button>
-              <button type="button" class="ph-btn" id="ph-next" aria-label="下一首">⏭️</button>
+              <button type="button" class="ph-btn" id="ph-prev" aria-label="上一首">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h2.2v14H5V5zm14 0.2L8.4 12 19 18.8V5.2z"/></svg>
+              </button>
+              <button type="button" class="ph-btn" id="ph-play" aria-label="播放">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12 8 5.2z"/></svg>
+              </button>
+              <button type="button" class="ph-btn" id="ph-pause" aria-label="暂停">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5h3.8v14H6.5V5zm7.2 0h3.8v14h-3.8V5z"/></svg>
+              </button>
+              <button type="button" class="ph-btn" id="ph-next" aria-label="下一首">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.8 5H19v14h-2.2V5zM5 5.2L15.6 12 5 18.8V5.2z"/></svg>
+              </button>
             </div>
             <div class="ph-btn-group" role="group" aria-label="播放模式">
-              <button type="button" class="ph-btn" id="ph-order" aria-label="顺序播放">🔢</button>
-              <button type="button" class="ph-btn" id="ph-shuffle" aria-label="随机播放">🔀</button>
+              <button type="button" class="ph-btn" id="ph-order" aria-label="顺序播放">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="ph-ico-order">
+                  <text x="4" y="11" font-size="8.5" font-weight="700" font-family="system-ui,sans-serif">1 2</text>
+                  <text x="4" y="20" font-size="8.5" font-weight="700" font-family="system-ui,sans-serif">3 4</text>
+                </svg>
+              </button>
+              <button type="button" class="ph-btn" id="ph-shuffle" aria-label="随机播放">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 7h3.2c1.1 0 2.1.5 2.8 1.4L14 17c.7.9 1.7 1.4 2.8 1.4H20"/>
+                  <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 5l3 2.4L17 9.8"/>
+                  <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 17h3.2c1.1 0 2.1-.5 2.8-1.4L12 13"/>
+                  <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 14.2L20 16.6 17 19"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>

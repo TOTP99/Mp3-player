@@ -739,79 +739,105 @@ body {
   width: 100%;
   max-width: 400px;
 }
-/* 细金边分组：播放四键 / 模式两键 */
+/* 细金边分组：播放四键 / 模式两键 —— 浅色实体键 */
 .ph-btn-group {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 4px 6px;
-  border-radius: 12px;
-  border: 1px solid rgba(154, 123, 47, 0.42);
+  gap: 5px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(212, 175, 55, 0.45);
   background: linear-gradient(
     180deg,
-    rgba(28, 14, 20, 0.55) 0%,
-    rgba(12, 4, 10, 0.65) 100%
+    rgba(18, 10, 8, 0.92) 0%,
+    rgba(8, 4, 6, 0.96) 100%
   );
   box-shadow:
-    inset 0 1px 0 rgba(212, 175, 55, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.25);
+    inset 0 1px 0 rgba(255, 215, 0, 0.08),
+    0 2px 10px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
   transition:
     border-color 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
     box-shadow 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
     background 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .ph-btn-group:hover {
-  border-color: rgba(212, 175, 55, 0.55);
+  border-color: rgba(255, 215, 0, 0.6);
   box-shadow:
-    inset 0 1px 0 rgba(212, 175, 55, 0.14),
-    0 3px 12px rgba(0, 0, 0, 0.3),
-    0 0 14px rgba(212, 175, 55, 0.08);
+    inset 0 1px 0 rgba(255, 215, 0, 0.12),
+    0 3px 14px rgba(0, 0, 0, 0.4),
+    0 0 18px rgba(212, 175, 55, 0.1);
 }
 .ph-btn {
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--gold);
-  font-size: 16px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background:
+    linear-gradient(165deg, #e8ecf2 0%, #c4ccd8 42%, #a8b2c2 100%);
+  color: #2a3340;
+  font-size: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: none;
-  text-shadow: 0 0 6px rgba(212, 175, 55, 0.22);
   padding: 0;
-  opacity: 0.78;
+  opacity: 1;
   transform: scale(1);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.12);
   transition:
-    opacity 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
-    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
-    color 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
-    text-shadow 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
-    background 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    filter 0.15s ease;
+}
+.ph-btn svg {
+  width: 58%;
+  height: 58%;
+  display: block;
+  pointer-events: none;
+}
+.ph-btn svg path:not([fill="none"]) {
+  fill: currentColor;
+}
+.ph-btn .ph-ico-order text {
+  fill: currentColor;
 }
 .ph-btn:hover {
-  opacity: 0.95;
-  color: var(--champagne);
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
-  background: rgba(212, 175, 55, 0.08);
+  filter: brightness(1.08);
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    0 0 10px rgba(255, 215, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
 }
 .ph-btn:active {
-  transform: scale(0.9);
-  opacity: 0.65;
-  transition-duration: 0.12s;
+  transform: scale(0.92);
+  filter: brightness(0.92);
+  box-shadow:
+    0 0 1px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition-duration: 0.08s;
 }
 .ph-btn.on {
-  opacity: 1;
-  color: var(--gold-bright);
-  text-shadow:
-    0 0 10px rgba(212, 175, 55, 0.5),
-    0 0 4px rgba(255, 255, 255, 0.22);
-  transform: scale(1.08);
-  background: rgba(212, 175, 55, 0.12);
+  background:
+    linear-gradient(165deg, #f4f7fc 0%, #d4dce8 40%, #b8c4d4 100%);
+  border-color: rgba(255, 230, 150, 0.55);
+  color: #1a2230;
+  transform: scale(1.06);
+  box-shadow:
+    0 0 0 1px rgba(255, 215, 0, 0.25),
+    0 0 14px rgba(255, 215, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.08);
 }
 
 /* 横屏：三栏布局；尺寸由 JS 写入 --ph-shell-h 等，clamp 为回退 */
@@ -926,6 +952,6 @@ body {
   .ph-root { gap: 4px; }
   .ph-shell { gap: 3px; padding: 3px; }
   .ph-mini { width: 60px; padding: 4px 3px; }
-  .ph-btn-group { padding: 2px 3px; gap: 1px; }
-  .ph-btn { width: 24px; height: 24px; font-size: 11px; }
+  .ph-btn-group { padding: 3px 4px; gap: 3px; }
+  .ph-btn { width: 24px; height: 24px; border-radius: 6px; }
 }
