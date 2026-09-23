@@ -806,9 +806,6 @@ body {
 .ph-btn svg path:not([fill="none"]) {
   fill: currentColor;
 }
-.ph-btn .ph-ico-order text {
-  fill: currentColor;
-}
 .ph-btn:hover {
   filter: brightness(1.08);
   border-color: rgba(255, 255, 255, 0.4);
