@@ -45,7 +45,7 @@ body {
   -webkit-justify-content: center;
   justify-content: center;
   overflow: hidden;
-  padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+  padding: max(8px, env(safe-area-inset-top)) 12px max(8px, env(safe-area-inset-bottom));
   background: #070006;
   color: var(--gold);
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
@@ -720,6 +720,24 @@ body {
   min-height: 1em;
   letter-spacing: 0.5px;
   opacity: 0.85;
+}
+
+.ph-track-kicker svg {
+  width: 10px;
+  height: 10px;
+  vertical-align: -1px;
+  margin-right: 3px;
+  fill: currentColor;
+}
+.ph-mini-bal {
+  display: inline-flex;
+  align-items: center;
+}
+.ph-mini-bal svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 3px;
+  flex: 0 0 auto;
 }
 
 /* 控制键：金框外下方居中，8 个键一行排列 */

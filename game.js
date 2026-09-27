@@ -475,7 +475,7 @@ class BGMusic {
     if (this.enabled) this._playAudio();
   }
 
-  // 显式播放（▶️ 键）
+  // 显式播放（播放键）
   async play() {
     if (!this.audio) return;
     this.ensureAnalyser();
@@ -541,17 +541,8 @@ class BGMusic {
 const bgMusic = new BGMusic();
 
 // ---------- 首点解锁音频（iOS / 部分 Android 需用户手势） ----------
+// tryPlay() 内已创建并 resume AudioContext，这里不再另建一次性 context
 function unlockAudioOnce() {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) {
-      const ctx = new AC();
-      if (ctx.state === "suspended") {
-        const r = ctx.resume();
-        if (r && typeof r.catch === "function") r.catch(() => {});
-      }
-    }
-  } catch (e) {}
   try {
     bgMusic.tryPlay(); // 首次用户手势时启动背景音乐（若已开启）
   } catch (e) {}
@@ -677,7 +668,7 @@ document.addEventListener("visibilitychange", function () {
       if (typeof s.bet === "number") bet = s.bet;
     }
     if (balanceEl) balanceEl.textContent = Number(bal).toFixed(0);
-    if (betEl) betEl.textContent = "—$" + Number(bet).toFixed(0);
+    if (betEl) betEl.textContent = "注$" + Number(bet).toFixed(0);
   }
 
   function setMsg(t) {
@@ -787,7 +778,6 @@ document.addEventListener("visibilitychange", function () {
 
     var points = specHistory.length;
     if (points < 2) {
-      ctx.restore && ctx.restore();
       return;
     }
 
@@ -956,7 +946,7 @@ document.addEventListener("visibilitychange", function () {
       if (typeof s.jackpotValue === "number") jackpotValue = s.jackpotValue;
     }
     if (bal < bet) {
-      setMsg("—");
+      setMsg("余额不足");
       return;
     }
     miniSpinning = true;
@@ -990,7 +980,7 @@ document.addEventListener("visibilitychange", function () {
         var win = evalResult.win;
 
         if (evalResult.type === "jackpot") {
-          setMsg("💎 JACKPOT +" + win);
+          setMsg("JACKPOT +" + win);
         } else if (evalResult.type === "three") {
           setMsg(a.label + a.label + a.label + " +" + win);
         } else if (evalResult.type === "pair") {
