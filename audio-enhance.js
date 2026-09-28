@@ -37,6 +37,13 @@
     agcSmooth: 0.06,
     // 总湿声比例（1=全开增强，0=等于直通增益 1）
     wet: 1,
+    // 音高加强（听感）：presence 人声清晰度
+    presenceHz: 3200,
+    presenceDb: 2.5,
+    presenceQ: 1.0,
+    // 音高加强（听感）：air 高频通透感
+    airHz: 11000,
+    airDb: 2.0,
   };
 
   function clamp(v, lo, hi) {
@@ -76,6 +83,19 @@
     compressor.ratio.value = cfg.compRatio;
     compressor.attack.value = cfg.compAttack;
     compressor.release.value = cfg.compRelease;
+
+    // 音高加强（听感 B）：presence 让人声更靠前清晰
+    var presence = ctx.createBiquadFilter();
+    presence.type = "peaking";
+    presence.frequency.value = cfg.presenceHz;
+    presence.gain.value = cfg.presenceDb;
+    presence.Q.value = cfg.presenceQ;
+
+    // 音高加强（听感 B）：air 让高频更通透有光泽
+    var air = ctx.createBiquadFilter();
+    air.type = "highshelf";
+    air.frequency.value = cfg.airHz;
+    air.gain.value = cfg.airDb;
 
     var agcGain = ctx.createGain();
     agcGain.gain.value = 1;
@@ -145,7 +165,9 @@
       try {
         source.connect(highpass);
         highpass.connect(lowpass);
-        lowpass.connect(compressor);
+        lowpass.connect(presence);
+        presence.connect(air);
+        air.connect(compressor);
         compressor.connect(agcGain);
         agcGain.connect(destination);
         compressor.connect(meter);
@@ -171,6 +193,21 @@
       cfg.wet = clamp(Number(w) || 0, 0, 1);
     }
 
+    // 音高加强（听感 B）运行时调节：presence/air 的 dB 数
+    function setPresence(db) {
+      cfg.presenceDb = Number(db) || 0;
+      try {
+        presence.gain.setTargetAtTime(cfg.presenceDb, ctx.currentTime, 0.05);
+      } catch (e) {}
+    }
+
+    function setAir(db) {
+      cfg.airDb = Number(db) || 0;
+      try {
+        air.gain.setTargetAtTime(cfg.airDb, ctx.currentTime, 0.05);
+      } catch (e) {}
+    }
+
     /** 切歌后可调用，避免沿用上一首的 AGC 增益 */
     function resetAgc() {
       smoothGain = 1;
@@ -183,6 +220,8 @@
       connectFrom: connectFrom,
       setEnabled: setEnabled,
       setWet: setWet,
+      setPresence: setPresence,
+      setAir: setAir,
       resetAgc: resetAgc,
       stop: stopAgc,
       get config() {
