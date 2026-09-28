@@ -271,6 +271,34 @@ class BGMusic {
     }
   }
 
+  // 屏幕唤醒锁：播放时防止手机自动锁屏（锁屏会导致 AudioContext 被挂起、歌声中断）
+  async _requestWakeLock() {
+    try {
+      if (!("wakeLock" in navigator)) return;
+      if (this._wakeLock) return;
+      const sentinel = await navigator.wakeLock.request("screen");
+      this._wakeLock = sentinel;
+      sentinel.addEventListener("release", () => {
+        this._wakeLock = null;
+      });
+    } catch (e) {
+      this._wakeLock = null;
+    }
+  }
+
+  _releaseWakeLock() {
+    try {
+      if (this._wakeLock) {
+        const s = this._wakeLock;
+        this._wakeLock = null;
+        const r = s.release();
+        if (r && typeof r.catch === "function") r.catch(() => {});
+      }
+    } catch (e) {
+      this._wakeLock = null;
+    }
+  }
+
   _playAudio() {
     this._resumeCtx();
     try {
@@ -493,6 +521,7 @@ class BGMusic {
     this.ensureAnalyser();
     this._fadeGainTo(1, 0.05);
     this._playAudio();
+    this._requestWakeLock();
   }
 
   _fadeGainTo(target, seconds) {
@@ -507,6 +536,7 @@ class BGMusic {
   }
 
   pause() {
+    this._releaseWakeLock();
     if (this._gain && this.ctx && this.ctx.state === "running") {
       this._fadeGainTo(0, 0.06);
       const audioEl = this.audio;
@@ -557,6 +587,10 @@ document.addEventListener("visibilitychange", function () {
   if (!document.hidden) {
     try {
       bgMusic.tryPlay();
+    } catch (e) {}
+    // Wake Lock 在页面隐藏时会被系统自动释放，切回前台且正在播放时重申请
+    try {
+      if (bgMusic.isPlaying()) bgMusic._requestWakeLock();
     } catch (e) {}
   }
 });
