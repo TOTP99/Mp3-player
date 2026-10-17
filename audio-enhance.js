@@ -100,6 +100,14 @@
     var agcGain = ctx.createGain();
     agcGain.gain.value = 1;
 
+    // 末端限幅器：AGC 推高后收峰值，防数字削波
+    var limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -3;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.002;
+    limiter.release.value = 0.1;
+
     // 在压缩后取样，用于 AGC（不送扬声器）
     var meter = ctx.createAnalyser();
     meter.fftSize = 2048;
@@ -108,7 +116,7 @@
 
     var smoothGain = 1;
     var enabled = true;
-    var rafId = 0;
+    var agcTimer = 0;
     var connected = false;
 
     function readRms() {
@@ -123,7 +131,6 @@
     }
 
     function agcTick() {
-      rafId = requestAnimationFrame(agcTick);
       if (!enabled || !connected) return;
       if (ctx.state !== "running") return;
 
@@ -145,14 +152,15 @@
     }
 
     function startAgc() {
-      if (rafId) return;
-      rafId = requestAnimationFrame(agcTick);
+      if (agcTimer) return;
+      // 用 setInterval 而不用 rAF：锁屏/后台时 rAF 停摆，音乐却继续播
+      agcTimer = setInterval(agcTick, 120);
     }
 
     function stopAgc() {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = 0;
+      if (agcTimer) {
+        clearInterval(agcTimer);
+        agcTimer = 0;
       }
     }
 
@@ -169,7 +177,8 @@
         presence.connect(air);
         air.connect(compressor);
         compressor.connect(agcGain);
-        agcGain.connect(destination);
+        agcGain.connect(limiter);
+        limiter.connect(destination);
         compressor.connect(meter);
         connected = true;
         startAgc();
