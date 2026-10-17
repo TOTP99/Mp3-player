@@ -1,10 +1,8 @@
 /**
- * 万锦留声机 - 竖屏独立版（index.html + style.css + game.js）
- * 与横屏老虎机是两个完全独立的游戏，仅通过 localStorage 的
- * "wanjin_slot_save" 存档共用同一份余额 / 下注 / 累积奖池。
+ * 万锦留声机 · 竖屏版
+ * 与横屏老虎机独立，仅 localStorage "wanjin_slot_save" 共用余额/下注/奖池。
  */
 
-// ---------- 符号表（与横屏老虎机保持一致，赔率/图案不独立维护一份）----------
 const SYMBOLS = [
   { key: "seven", label: "7️⃣", multiplier: 50 },
   { key: "blossom", label: "🌸", multiplier: 20 },
@@ -15,9 +13,7 @@ const SYMBOLS = [
   { key: "mushroom", label: "🍄", multiplier: 4 },
 ];
 
-// ---------- 中奖概率表（结果导向，与横屏老虎机口径一致）----------
-// 先按目标概率决定这一把的结果类型，再倒推三个轮子该显示什么符号，
-// 保证综合期望回报率(RTP)可控，不受符号分布组合数学效应影响。
+// 结果导向概率表：先定结果类型，再倒推轮面（RTP 可控）
 const SPIN_TABLE_TOTAL = 1000000;
 const THREE_OF_KIND_WEIGHTS = {
   blossom: 700,
@@ -71,7 +67,6 @@ function shuffleArray(arr) {
   return a;
 }
 
-// 根据本节点抽中的结果类型，倒推三个轮子应显示的符号（数组顺序=轮子顺序）
 function rollSpinResult() {
   const outcome = pickWeighted(SPIN_OUTCOME_TABLE);
 
@@ -99,7 +94,6 @@ function rollSpinResult() {
   return [shuffled[0], shuffled[1], shuffled[2]];
 }
 
-// 判定三个轮子结果的中奖类型与金额：与横屏老虎机共用同一套判定逻辑
 function evaluateSpinResult(a, b, c, bet, jackpotValue) {
   const isThreeOfAKind = a.key === b.key && b.key === c.key;
   const isJackpot = isThreeOfAKind && a.key === "seven";
@@ -119,25 +113,19 @@ function evaluateSpinResult(a, b, c, bet, jackpotValue) {
   return { type: "none", win: 0, symbol: null };
 }
 
-// ---------- 背景音乐歌单清单 ----------
-// mp3 文件实际托管在另一个仓库（source/mp3 目录），本页面跨库引用，不在本地存放音频。
-// 加歌方式：把 mp3 文件改名为 1.mp3、2.mp3 …按你想要的播放顺序编号，
-// 放进 source 仓库的 mp3 目录即可，以后无需再改这里的代码
-// （如果文件总数变了，记得同步改下面的 BG_MUSIC_MAX）。
+// 曲目：source 仓库 mp3/1.mp3…；改数量时同步 BG_MUSIC_MAX
 const BG_MUSIC_BASE = "https://totp99.github.io/source/mp3/";
-const BG_MUSIC_MAX = 99; // 支持的最大编号（对应 1.mp3 ~ 99.mp3），实际数量以 source/mp3 目录为准
+const BG_MUSIC_MAX = 99;
 
-// ---------- 背景音乐（含频谱分析） ----------
 class BGMusic {
   constructor() {
     this.currentNum = 1;
-    this._skipAttempts = 0; // 连续跳过次数，防止全部文件缺失时死循环
+    this._skipAttempts = 0;
 
     this.audio = new Audio();
-    this.audio.loop = false; // 由 ended/error 事件控制切歌
+    this.audio.loop = false;
     this.audio.preload = "auto";
-    // 跨域 mp3 + MediaElementSource：必须 anonymous，否则 Web Audio 图输出静音
-    this.audio.crossOrigin = "anonymous";
+    this.audio.crossOrigin = "anonymous"; // 跨域 + MediaElementSource 必需
     this.audio.volume = 0.8;
 
     const savedEnabled = localStorage.getItem("bgMusicEnabled");
@@ -158,7 +146,6 @@ class BGMusic {
         ? savedNum
         : 1;
 
-    // Web Audio 分析：频谱 → 均衡条（声高 / 情绪 / 男女声区 / 乐器频段）
     this.ctx = null;
     this.analyser = null;
     this._source = null;
@@ -273,7 +260,6 @@ class BGMusic {
     }
   }
 
-  // 屏幕唤醒锁：播放时防止手机自动锁屏（锁屏会导致 AudioContext 被挂起、歌声中断）
   async _requestWakeLock() {
     try {
       if (!("wakeLock" in navigator)) return;
@@ -436,7 +422,7 @@ class BGMusic {
     }
   }
 
-  // order: 顺序到尽头后停；all: 顺序循环；shuffle: 随机；single: 单曲循环
+  // order 播完停；all 循环；shuffle 随机；single 单曲
   _pickNext() {
     if (this.playMode === "single") {
       return this.currentNum;
@@ -505,7 +491,19 @@ class BGMusic {
     if (this.enabled) this._playAudio();
   }
 
-  // 显式播放（播放键）
+  _resetGainToOne() {
+    if (this._gain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        this._gain.gain.cancelScheduledValues(now);
+        this._gain.gain.setValueAtTime(1, now);
+      } catch (e) {}
+    } else {
+      this._fadeGainTo(1, 0.05);
+    }
+  }
+
+  /** 播放键：强制开启并播放 */
   async play() {
     if (!this.audio) return;
     this.ensureAnalyser();
@@ -514,34 +512,17 @@ class BGMusic {
       this.enabled = true;
       localStorage.setItem("bgMusicEnabled", "true");
     }
-    if (this._gain && this.ctx) {
-      try {
-        const now = this.ctx.currentTime;
-        this._gain.gain.cancelScheduledValues(now);
-        this._gain.gain.setValueAtTime(1, now);
-      } catch (e) {}
-    } else {
-      this._fadeGainTo(1, 0.05);
-    }
+    this._resetGainToOne();
     this._playAudio();
     this._requestWakeLock();
   }
 
-  // 需在用户手势（点击/触摸/按键）中调用，否则浏览器会拦截自动播放
+  /** 用户手势内尝试播放（受 enabled 控制） */
   async tryPlay() {
     if (!this.enabled) return;
     this.ensureAnalyser();
     this._resumeCtx();
-    // 确保主增益不为 0（pause 淡出后若超时未复位，会一直无声）
-    if (this._gain && this.ctx) {
-      try {
-        const now = this.ctx.currentTime;
-        this._gain.gain.cancelScheduledValues(now);
-        this._gain.gain.setValueAtTime(1, now);
-      } catch (e) {}
-    } else {
-      this._fadeGainTo(1, 0.05);
-    }
+    this._resetGainToOne();
     this._playAudio();
     this._requestWakeLock();
   }
@@ -559,7 +540,6 @@ class BGMusic {
 
   pause() {
     this._releaseWakeLock();
-    // 立刻暂停音频元素，手感即时；增益并行快速淡出防爆音
     try {
       this.audio.pause();
     } catch (e) {}
@@ -588,11 +568,9 @@ class BGMusic {
 
 const bgMusic = new BGMusic();
 
-// ---------- 首点解锁音频（iOS / 部分 Android 需用户手势） ----------
-// tryPlay() 内已创建并 resume AudioContext，这里不再另建一次性 context
 function unlockAudioOnce() {
   try {
-    bgMusic.tryPlay(); // 首次用户手势时启动背景音乐（若已开启）
+    bgMusic.tryPlay();
   } catch (e) {}
   document.removeEventListener("touchstart", unlockAudioOnce, true);
   document.removeEventListener("mousedown", unlockAudioOnce, true);
@@ -606,16 +584,12 @@ document.addEventListener("visibilitychange", function () {
     try {
       bgMusic.tryPlay();
     } catch (e) {}
-    // Wake Lock 在页面隐藏时会被系统自动释放，切回前台且正在播放时重申请
     try {
       if (bgMusic.isPlaying()) bgMusic._requestWakeLock();
     } catch (e) {}
   }
 });
 
-// ---------- 留声机主界面 + 迷你老虎机 ----------
-// 余额/下注/累积奖池通过 localStorage 的 "wanjin_slot_save" 与横屏老虎机
-// 共用同一份存档；两个游戏各自独立运行，互不依赖对方是否打开。
 (function setupPhonograph() {
   var vinyl = document.getElementById("ph-vinyl");
   var vinylWrap = document.querySelector(".ph-vinyl-wrap");
@@ -732,39 +706,7 @@ document.addEventListener("visibilitychange", function () {
     if (msgEl) msgEl.textContent = t;
   }
 
-  var SPEC_GRADIENT_RGB = [
-    [255, 45, 149],
-    [255, 140, 66],
-    [255, 224, 102],
-    [64, 224, 255],
-    [61, 90, 255],
-  ];
-  var SPEC_COLOR_LUT = (function () {
-    var lut = new Array(64);
-    var stops = SPEC_GRADIENT_RGB;
-    var n = stops.length - 1;
-    for (var i = 0; i < 64; i++) {
-      var t = i / 63;
-      var pos = t * n;
-      var seg = pos | 0;
-      if (seg >= n) seg = n - 1;
-      var localT = pos - seg;
-      var c1 = stops[seg];
-      var c2 = stops[seg + 1];
-      var r = (c1[0] + (c2[0] - c1[0]) * localT + 0.5) | 0;
-      var g = (c1[1] + (c2[1] - c1[1]) * localT + 0.5) | 0;
-      var b = (c1[2] + (c2[2] - c1[2]) * localT + 0.5) | 0;
-      lut[i] = "rgb(" + r + "," + g + "," + b + ")";
-    }
-    return lut;
-  })();
-  function specColorAt(t) {
-    if (t < 0) t = 0;
-    if (t > 1) t = 1;
-    return SPEC_COLOR_LUT[(t * 63 + 0.5) | 0];
-  }
-
-  // 三条飘带配色（粉橙 / 金青 / 蓝紫），绘制时按段再插值
+  // 三条飘带配色：低音粉橙 / 中音金青 / 高音蓝紫
   var RIBBON_COLORS = [
     [[255, 45, 149], [255, 140, 66], [255, 200, 100]],
     [[255, 224, 102], [64, 224, 255], [120, 200, 255]],
@@ -1023,7 +965,6 @@ document.addEventListener("visibilitychange", function () {
     if (Math.abs(vinylVel) < 0.002) vinylVel = 0;
     vinylAngle = (vinylAngle + vinylVel) % 360;
     vinyl.style.transform = "rotate(" + vinylAngle.toFixed(2) + "deg)";
-    // 氛围光跟能量呼吸
     if (ambientEl) {
       var target = playing ? 0.35 + energy * 0.65 : 0;
       ambientLvl += (target - ambientLvl) * 0.08;
@@ -1098,13 +1039,21 @@ document.addEventListener("visibilitychange", function () {
   }
   function syncProgress() {
     var a = bgMusic.audio;
-    if (!a || !barFill) return;
+    if (!a) return;
     var d = a.duration, c = a.currentTime;
-    var pct = (d > 0 && isFinite(d)) ? (c / d * 100) : 0;
-    barFill.style.width = pct + "%";
+    var pct = d > 0 && isFinite(d) ? (c / d) * 100 : 0;
+    if (barFill) barFill.style.width = pct + "%";
     if (barDot) barDot.style.left = pct + "%";
-    if (curEl) curEl.textContent = fmtT(c);
-    if (durEl) durEl.textContent = fmtT(d);
+    var portrait =
+      window.matchMedia &&
+      window.matchMedia("(orientation: portrait)").matches;
+    if (portrait) {
+      if (curEl) curEl.textContent = Math.round(pct) + "%";
+      if (durEl) durEl.textContent = "";
+    } else {
+      if (curEl) curEl.textContent = fmtT(c);
+      if (durEl) durEl.textContent = fmtT(d);
+    }
   }
   if (bgMusic.audio) {
     bgMusic.audio.addEventListener("timeupdate", syncProgress);
@@ -1149,8 +1098,6 @@ document.addEventListener("visibilitychange", function () {
     });
   }
 
-  // 迷你三格：与横屏共用余额存档、共用符号表(SYMBOLS)和判定逻辑
-  // (rollSpinResult / evaluateSpinResult)，不再各自维护一份容易脱节的赔率表
   var DEFAULT_BASE_JACKPOT = 25000;
   var DEFAULT_JACKPOT = 25800;
 
@@ -1165,7 +1112,6 @@ document.addEventListener("visibilitychange", function () {
 
   spinBtn.addEventListener("click", function () {
     if (miniSpinning) return;
-    // 按下不触发音效：本页用户多在听歌，SPIN 音效会打断播放体验
     var bet = 50;
     var bal = 1000;
     var jackpotValue = DEFAULT_JACKPOT;
@@ -1182,13 +1128,11 @@ document.addEventListener("visibilitychange", function () {
     miniSpinning = true;
     spinBtn.disabled = true;
     bal -= bet;
-    // 每转一次，JACKPOT 池累积当前下注的 5%
     jackpotValue += Math.max(1, Math.round(bet * 0.05));
     writeSave(bal, bet, jackpotValue);
     syncWallet();
     setMsg("");
 
-    // 起转时就按概率表一次性决定这一把的结果，动画只是把它"演"出来
     var finalResult = rollSpinResult();
     var a = finalResult[0];
     var b = finalResult[1];
@@ -1222,7 +1166,6 @@ document.addEventListener("visibilitychange", function () {
         if (win > 0) {
           bal += win;
           if (evalResult.type === "jackpot") {
-            // JACKPOT 基础值按当前下注比例缩放（以 bet=50 为基准单位）
             jackpotValue =
               Math.round(DEFAULT_BASE_JACKPOT * (bet / 50)) +
               250 +
@@ -1242,7 +1185,6 @@ document.addEventListener("visibilitychange", function () {
   syncWallet();
   syncPlayUi();
 
-  // 横屏：按可用高度写入 CSS 变量，保证金框上下沿可见
   function fitLandscapeLayout() {
     var root = document.documentElement;
     var isLandscape =
@@ -1298,7 +1240,6 @@ document.addEventListener("visibilitychange", function () {
     });
   }
 
-  // 方向变化：唱针抬起 → 轻淡出 → 重算布局 → 金边闪 + 回弹；同向 resize 只静默适配
   function onOrientationSmooth() {
     var nowOrient =
       window.matchMedia && window.matchMedia("(orientation: landscape)").matches

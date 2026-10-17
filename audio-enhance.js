@@ -1,47 +1,28 @@
 /**
- * audio-enhance.js —— 背景音乐音质 / 响度处理（独立模块）
- *
- * 解决：
- * 1) 部分曲目底噪、嗡声偏大 → 高通去隆隆声 + 轻柔低通削刺耳高频
- * 2) 曲目之间音量忽高忽低 → 压缩器压峰值 + AGC 自动拉向目标响度
- *
- * 用法（由 BGMusic.ensureAnalyser 接入）：
- *   const enh = createAudioEnhancer(audioContext);
- *   enh.connectFrom(mediaElementSource, masterGainNode);
- *   // 频谱分析仍由外部 source → analyser，不经本模块
- *
- * 可调参数见 DEFAULTS；运行时 enh.setEnabled(false) 可旁路（仍保持连接结构时用 wet=0）。
+ * audio-enhance.js — 听感增强（高通/低通、presence/air、压缩、AGC、限幅）
+ * 由 BGMusic.ensureAnalyser 接入；频谱 analyser 不经本模块。
+ * 调参见 DEFAULTS；enh.setEnabled(false) / setWet(0) 可旁路。
  */
 (function (global) {
   "use strict";
 
   var DEFAULTS = {
-    // 高通：切掉低频隆隆 / 交流声一类噪声（Hz）
     highpassHz: 70,
-    // 低通：略削超高频沙沙声（Hz）；过大等于没开
     lowpassHz: 13000,
-    // 压缩：压住突然很大的段落
     compThreshold: -26,
     compKnee: 10,
     compRatio: 3.5,
     compAttack: 0.012,
     compRelease: 0.22,
-    // AGC：目标 RMS（时间域 0~1 近似），越大整体越响
     targetRms: 0.11,
-    // AGC 增益钳位，避免静音段被猛拉、爆音段被压没
     agcMin: 0.45,
     agcMax: 2.2,
-    // 低于此 RMS 视为近静音，不再往上猛推（防放大底噪）
     silenceRms: 0.015,
-    // AGC 平滑速度 0~1，越大跟得越快
     agcSmooth: 0.06,
-    // 总湿声比例（1=全开增强，0=等于直通增益 1）
     wet: 1,
-    // 音高加强（听感）：presence 人声清晰度
     presenceHz: 3200,
     presenceDb: 2.5,
     presenceQ: 1.0,
-    // 音高加强（听感）：air 高频通透感
     airHz: 11000,
     airDb: 2.0,
   };

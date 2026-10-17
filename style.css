@@ -194,17 +194,30 @@ body {
   /* HTML 顺序是 播放组 → 进度 → 模式组；用 order 把两组合到第一行 */
   .ph-transport > .ph-btn-group:first-of-type { order: 1; }
   .ph-transport > .ph-btn-group:last-of-type { order: 2; }
+  /* 竖屏：进度条换成居中百分比数字 */
   .ph-progress {
     order: 3;
     flex: 1 1 100%;
     width: 100%;
     min-width: 100%;
-    padding: 2px 4px 0;
-    gap: 6px;
+    padding: 4px 4px 0;
+    gap: 0;
+    justify-content: center;
   }
-  .ph-time {
-    font-size: 10px;
-    min-width: 30px;
+  .ph-progress .ph-bar {
+    display: none;
+  }
+  .ph-progress .ph-time {
+    font-size: 13px;
+    min-width: 0;
+    letter-spacing: 0.8px;
+    color: var(--gold);
+    opacity: 0.92;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .ph-progress .ph-time#ph-dur {
+    display: none;
   }
   .ph-btn-group {
     padding: 4px 6px;
@@ -231,7 +244,7 @@ body {
   .ph-transport { gap: 4px; }
   .ph-btn { width: 32px; height: 32px; font-size: 15px; }
   .ph-btn-group { padding: 3px 5px; gap: 3px; }
-  .ph-time { font-size: 8px; min-width: 24px; }
+  .ph-progress .ph-time { font-size: 11px; }
 }
 
 @media (orientation: portrait) and (min-height: 900px) {
@@ -940,14 +953,6 @@ body {
     0 0 10px rgba(255, 215, 0, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.85),
     inset 0 -1px 1px rgba(0, 0, 0, 0.1);
-}
-.ph-btn:active {
-  transform: translateY(2px) scale(0.97);
-  box-shadow:
-    0 0 2px rgba(0, 0, 0, 0.4),
-    inset 0 2px 4px rgba(0, 0, 0, 0.25),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.3);
-  filter: brightness(0.96);
 }
 .ph-btn:active {
   transform: scale(0.92);
