@@ -62,6 +62,7 @@
         <div class="ph-shell">
           <div class="ph-stage">
             <canvas class="ph-spectrum" id="ph-spectrum" width="720" height="164"></canvas>
+            <div class="ph-ambient" id="ph-ambient" aria-hidden="true"></div>
             <div class="ph-vinyl-wrap">
               <div class="ph-vinyl" id="ph-vinyl">
                 <div class="ph-label" id="ph-label">
@@ -100,15 +101,25 @@
               <button type="button" class="ph-btn" id="ph-prev" aria-label="上一首">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h2.2v14H5V5zm14 0.2L8.4 12 19 18.8V5.2z"/></svg>
               </button>
-              <button type="button" class="ph-btn" id="ph-play" aria-label="播放">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12 8 5.2z"/></svg>
-              </button>
-              <button type="button" class="ph-btn" id="ph-pause" aria-label="暂停">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 5h3.8v14H6.5V5zm7.2 0h3.8v14h-3.8V5z"/></svg>
+              <button type="button" class="ph-btn ph-btn-toggle" id="ph-playpause" aria-label="播放/暂停">
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-play"><path d="M8 5.2v13.6L19 12 8 5.2z"/></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true" class="ic-pause"><path d="M6.5 5h3.8v14H6.5V5zm7.2 0h3.8v14h-3.8V5z"/></svg>
               </button>
               <button type="button" class="ph-btn" id="ph-next" aria-label="下一首">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.8 5H19v14h-2.2V5zM5 5.2L15.6 12 5 18.8V5.2z"/></svg>
               </button>
+            </div>
+            <div class="ph-progress" id="ph-progress">
+              <span class="ph-time" id="ph-cur">0:00</span>
+              <div class="ph-bar" id="ph-bar" role="slider" aria-label="播放进度" tabindex="0">
+                <div class="ph-bar-fill" id="ph-bar-fill"></div>
+                <div class="ph-bar-dot" id="ph-bar-dot"></div>
+              </div>
+              <span class="ph-time" id="ph-dur">0:00</span>
+            </div>
+            <div class="ph-vol">
+              <svg viewBox="0 0 24 24" aria-hidden="true" class="ph-vol-ic"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+              <input type="range" class="ph-vol-range" id="ph-vol" min="0" max="100" value="80" aria-label="音量">
             </div>
             <div class="ph-btn-group" role="group" aria-label="播放模式">
               <button type="button" class="ph-btn" id="ph-order" aria-label="顺序播放">

@@ -537,24 +537,20 @@ class BGMusic {
 
   pause() {
     this._releaseWakeLock();
+    // 立刻暂停音频元素，手感即时；增益并行快速淡出防爆音
+    try {
+      this.audio.pause();
+    } catch (e) {}
     if (this._gain && this.ctx && this.ctx.state === "running") {
-      this._fadeGainTo(0, 0.06);
-      const audioEl = this.audio;
+      this._fadeGainTo(0, 0.03);
       const gain = this._gain;
       setTimeout(() => {
-        try {
-          audioEl.pause();
-        } catch (e) {}
         try {
           gain.gain.cancelScheduledValues(this.ctx.currentTime);
           gain.gain.setValueAtTime(1, this.ctx.currentTime);
         } catch (e) {}
-      }, 70);
-      return;
+      }, 50);
     }
-    try {
-      this.audio.pause();
-    } catch (e) {}
   }
 
   setEnabled(enabled) {
@@ -600,13 +596,19 @@ document.addEventListener("visibilitychange", function () {
 // 共用同一份存档；两个游戏各自独立运行，互不依赖对方是否打开。
 (function setupPhonograph() {
   var vinyl = document.getElementById("ph-vinyl");
+  var vinylWrap = document.querySelector(".ph-vinyl-wrap");
   var arm = document.getElementById("ph-arm");
   var horn = document.getElementById("ph-horn");
   var label = document.getElementById("ph-label");
-  var playBtn = document.getElementById("ph-play");
-  var pauseBtn = document.getElementById("ph-pause");
+  var playPauseBtn = document.getElementById("ph-playpause");
   var prevBtn = document.getElementById("ph-prev");
   var nextBtn = document.getElementById("ph-next");
+  var volRange = document.getElementById("ph-vol");
+  var barEl = document.getElementById("ph-bar");
+  var barFill = document.getElementById("ph-bar-fill");
+  var barDot = document.getElementById("ph-bar-dot");
+  var curEl = document.getElementById("ph-cur");
+  var durEl = document.getElementById("ph-dur");
   var orderChip = document.getElementById("ph-order");
   var shuffleChip = document.getElementById("ph-shuffle");
   var clockFullEl = document.getElementById("ph-clock-full");
@@ -620,7 +622,7 @@ document.addEventListener("visibilitychange", function () {
     document.getElementById("ph-r1"),
     document.getElementById("ph-r2"),
   ];
-  if (!vinyl || !playBtn || !pauseBtn) return;
+  if (!vinyl || !playPauseBtn || !prevBtn) return;
 
   var miniSpinning = false;
   var phActive = false;
@@ -656,9 +658,8 @@ document.addEventListener("visibilitychange", function () {
 
   function syncPlayUi() {
     var playing = bgMusic.isPlaying();
-    if (playBtn) playBtn.classList.toggle("on", playing);
-    if (pauseBtn) pauseBtn.classList.toggle("on", !playing);
-    if (vinyl) vinyl.classList.toggle("playing", playing);
+    if (playPauseBtn) playPauseBtn.classList.toggle("on", playing);
+    if (vinylWrap) vinylWrap.classList.toggle("playing", playing);
     if (label) label.classList.toggle("playing", playing);
     if (horn) horn.classList.toggle("playing", playing);
     if (arm && playing !== lastPlaying) {
@@ -846,9 +847,9 @@ document.addEventListener("visibilitychange", function () {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.globalAlpha = playing ? 0.95 : 0.28;
-    ctx.lineWidth = playing ? 1.6 : 1.2;
-    ctx.setLineDash([7, 6]);
-    ctx.shadowBlur = 0;
+    ctx.lineWidth = playing ? 2 : 1.2;
+    ctx.shadowBlur = playing ? 8 : 0;
+    ctx.shadowColor = "rgba(255, 215, 0, 0.55)";
 
     var bandsN = 5;
     var seg = Math.max(1, (points / bandsN) | 0);
@@ -859,15 +860,22 @@ document.addEventListener("visibilitychange", function () {
       var tMid = (i0 + i1) * 0.5 * invN;
       ctx.beginPath();
       ctx.moveTo(xs[i0], ys[i0]);
-      for (var i = i0 + 1; i <= i1; i++) ctx.lineTo(xs[i], ys[i]);
+      for (var i = i0 + 1; i < i1; i++) {
+        var xc = (xs[i] + xs[i + 1]) / 2;
+        var yc = (ys[i] + ys[i + 1]) / 2;
+        ctx.quadraticCurveTo(xs[i], ys[i], xc, yc);
+      }
+      ctx.lineTo(xs[i1], ys[i1]);
       ctx.strokeStyle = specColorAt(tMid);
       ctx.stroke();
     }
 
-    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
     ctx.restore();
   }
 
+  var ambientEl = document.getElementById("ph-ambient");
+  var ambientLvl = 0;
   function tickVinyl() {
     if (!vinyl) return;
     var playing = bgMusic.isPlaying();
@@ -877,6 +885,13 @@ document.addEventListener("visibilitychange", function () {
     if (Math.abs(vinylVel) < 0.002) vinylVel = 0;
     vinylAngle = (vinylAngle + vinylVel) % 360;
     vinyl.style.transform = "rotate(" + vinylAngle.toFixed(2) + "deg)";
+    // 氛围光跟能量呼吸
+    if (ambientEl) {
+      var target = playing ? 0.35 + energy * 0.65 : 0;
+      ambientLvl += (target - ambientLvl) * 0.08;
+      ambientEl.classList.toggle("lit", ambientLvl > 0.05);
+      ambientEl.style.opacity = ambientLvl.toFixed(3);
+    }
   }
 
   function loop() {
@@ -915,13 +930,10 @@ document.addEventListener("visibilitychange", function () {
     });
   }
 
-  playBtn.addEventListener("click", function () {
-    bgMusic.play();
-    setTimeout(syncPlayUi, 80);
-  });
-  pauseBtn.addEventListener("click", function () {
-    bgMusic.pause();
-    setTimeout(syncPlayUi, 80);
+  playPauseBtn.addEventListener("click", function () {
+    if (bgMusic.isPlaying()) bgMusic.pause();
+    else bgMusic.play();
+    syncPlayUi();
   });
   prevBtn.addEventListener("click", function () {
     bgMusic.skipPrev();
@@ -940,6 +952,66 @@ document.addEventListener("visibilitychange", function () {
     bgMusic.skipNext();
     bumpArmOnSeek();
   });
+  // 音量
+  function applyVol() {
+    var v = volRange ? (volRange.value / 100) : 0.8;
+    try { bgMusic.audio.volume = v; } catch (e) {}
+    try { localStorage.setItem("phVol", String(v)); } catch (e) {}
+  }
+  if (volRange) {
+    try {
+      var sv = parseFloat(localStorage.getItem("phVol"));
+      if (!isNaN(sv)) volRange.value = Math.round(sv * 100);
+    } catch (e) {}
+    volRange.addEventListener("input", applyVol);
+    applyVol();
+  }
+  // 进度条
+  function fmtT(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    var m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+  function syncProgress() {
+    var a = bgMusic.audio;
+    if (!a || !barFill) return;
+    var d = a.duration, c = a.currentTime;
+    var pct = (d > 0 && isFinite(d)) ? (c / d * 100) : 0;
+    barFill.style.width = pct + "%";
+    if (barDot) barDot.style.left = pct + "%";
+    if (curEl) curEl.textContent = fmtT(c);
+    if (durEl) durEl.textContent = fmtT(d);
+  }
+  if (bgMusic.audio) {
+    bgMusic.audio.addEventListener("timeupdate", syncProgress);
+    bgMusic.audio.addEventListener("loadedmetadata", syncProgress);
+  }
+  function seekTo(clientX) {
+    var a = bgMusic.audio, r = barEl.getBoundingClientRect();
+    if (!a || !isFinite(a.duration) || a.duration <= 0) return;
+    var pct = (clientX - r.left) / r.width;
+    pct = Math.max(0, Math.min(1, pct));
+    try { a.currentTime = pct * a.duration; } catch (e) {}
+    syncProgress();
+  }
+  if (barEl) {
+    barEl.addEventListener("pointerdown", function (e) {
+      seekTo(e.clientX);
+      var mv = function (ev) { seekTo(ev.clientX); };
+      var up = function () {
+        window.removeEventListener("pointermove", mv);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", mv);
+      window.addEventListener("pointerup", up);
+    });
+    barEl.addEventListener("keydown", function (e) {
+      var a = bgMusic.audio;
+      if (!a || !isFinite(a.duration)) return;
+      if (e.key === "ArrowLeft") { a.currentTime = Math.max(0, a.currentTime - 5); e.preventDefault(); }
+      if (e.key === "ArrowRight") { a.currentTime = Math.min(a.duration, a.currentTime + 5); e.preventDefault(); }
+    });
+  }
   if (orderChip) {
     orderChip.addEventListener("click", function () {
       bgMusic.setPlayMode("order");

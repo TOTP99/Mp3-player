@@ -427,10 +427,14 @@ body {
   transform: rotateX(14deg);
   -webkit-transition:
     width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 0.45s ease;
   transition:
     width 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
-    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1);
+    height 0.38s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1),
+    filter 0.45s ease;
 }
 .ph-vinyl {
   width: 100%;
@@ -449,13 +453,52 @@ body {
   border: 2px solid var(--gold);
   box-shadow:
     0 0 0 1px #5c4010,
-    0 5px 0 -1px #050302,
-    0 9px 16px rgba(0, 0, 0, 0.55),
-    0 0 10px rgba(255, 215, 0, 0.1),
-    inset 0 0 36px rgba(0, 0, 0, 0.85);
+    0 1px 0 0 #2a2a2a,
+    0 2px 0 0 #1a1a1a,
+    0 3px 0 0 #0d0d0d,
+    0 4px 0 0 #050302,
+    0 8px 18px rgba(0, 0, 0, 0.6),
+    0 0 14px rgba(255, 215, 0, 0.12),
+    inset 0 0 36px rgba(0, 0, 0, 0.85),
+    inset 0 2px 6px rgba(255, 255, 255, 0.06);
   position: relative;
   will-change: transform;
   overflow: hidden;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+/* 播放时悬浮起来（挂在wrap上，避免跟JS的rotate inline样式冲突） */
+.ph-vinyl-wrap.playing {
+  transform: rotateX(14deg) translateY(-4px);
+}
+.ph-vinyl-wrap.playing .ph-vinyl {
+  box-shadow:
+    0 0 0 1px #5c4010,
+    0 1px 0 0 #2a2a2a,
+    0 2px 0 0 #1a1a1a,
+    0 3px 0 0 #0d0d0d,
+    0 4px 0 0 #050302,
+    0 14px 28px rgba(0, 0, 0, 0.65),
+    0 0 22px rgba(255, 215, 0, 0.22),
+    inset 0 0 36px rgba(0, 0, 0, 0.85),
+    inset 0 2px 6px rgba(255, 255, 255, 0.06);
+}
+/* 碟面高光弧 */
+.ph-vinyl::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.07) 25deg,
+    transparent 60deg,
+    transparent 180deg,
+    rgba(255, 255, 255, 0.05) 210deg,
+    transparent 250deg
+  );
+  pointer-events: none;
+  z-index: 2;
 }
 .ph-vinyl::before {
   content: "";
@@ -575,10 +618,22 @@ body {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffe566, #8a7040);
+  background: radial-gradient(circle at 35% 30%, #fff8d0, #ffe566 30%, #8a7040 75%, #5c4010);
   border: 1.5px solid var(--gold);
-  box-shadow: 0 0 3px rgba(255, 215, 0, 0.2);
+  box-shadow:
+    0 0 3px rgba(255, 215, 0, 0.2),
+    inset 0 -2px 3px rgba(0,0,0,.4),
+    inset 0 1px 2px rgba(255,255,255,.5);
   z-index: 2;
+}
+.ph-arm-pivot::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 4px; height: 4px; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 40% 35%, #fff, #999 70%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.5);
 }
 .ph-arm-rod {
   position: absolute;
@@ -587,10 +642,21 @@ body {
   width: 72%;
   height: 3.5px;
   border-radius: 2px;
-  background: linear-gradient(90deg, #c9a227, #ffe566 40%, #8a7040);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(180deg, #fff8d0 0%, #ffe566 25%, #c9a227 55%, #8a7040 100%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    inset 0 1px 1px rgba(255,255,255,.6);
   transform-origin: right center;
   transform: rotate(48deg);
+}
+.ph-arm-rod::after {
+  content: "";
+  position: absolute;
+  right: 18%; top: 50%;
+  width: 5px; height: 5px; border-radius: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at 40% 35%, #fff, #888 70%);
+  box-shadow: 0 1px 2px rgba(0,0,0,.5);
 }
 .ph-arm-head {
   position: absolute;
@@ -604,7 +670,13 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
 }
 .ph-arm.up { transform: rotate(-38deg); }
-.ph-arm.down { transform: rotate(12deg); }
+.ph-arm.down { transform: rotate(12deg); animation: ph-needle-drop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes ph-needle-drop {
+  0% { transform: rotate(-8deg); }
+  55% { transform: rotate(14deg); }
+  75% { transform: rotate(10.5deg); }
+  100% { transform: rotate(12deg); }
+}
 .ph-arm.down .ph-arm-head {
   box-shadow:
     0 0 4px rgba(255, 215, 0, 0.22),
@@ -834,6 +906,14 @@ body {
     inset 0 -1px 1px rgba(0, 0, 0, 0.1);
 }
 .ph-btn:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow:
+    0 0 2px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(0, 0, 0, 0.25),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+  filter: brightness(0.96);
+}
+.ph-btn:active {
   transform: scale(0.92);
   filter: brightness(0.92);
   box-shadow:
@@ -970,3 +1050,64 @@ body {
   .ph-btn-group { padding: 3px 4px; gap: 3px; }
   .ph-btn { width: 24px; height: 24px; border-radius: 6px; }
 }
+
+/* ---------- 播放/暂停切换按钮 ---------- */
+.ph-btn-toggle .ic-pause { display: none; }
+.ph-btn-toggle.on .ic-play { display: none; }
+.ph-btn-toggle.on .ic-pause { display: block; }
+.ph-btn-toggle.on {
+  background: linear-gradient(165deg, #ffe9a8 0%, #f5c542 55%, #d9a416 100%);
+  border-color: rgba(255, 220, 120, 0.55);
+  color: #3a2705;
+}
+
+/* ---------- 进度条 ---------- */
+.ph-progress {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; width: 100%;
+}
+.ph-time { font-size: 11px; color: rgba(255,255,255,.65); min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; }
+.ph-bar {
+  position: relative; flex: 1; height: 22px; cursor: pointer;
+  display: flex; align-items: center; touch-action: none;
+}
+.ph-bar::before {
+  content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,.18);
+}
+.ph-bar-fill {
+  position: absolute; left: 0; height: 4px; border-radius: 2px; width: 0%;
+  background: linear-gradient(90deg, #f5c542, #ffe9a8);
+}
+.ph-bar-dot {
+  position: absolute; width: 12px; height: 12px; border-radius: 50%;
+  background: #ffe9a8; border: 2px solid #d9a416;
+  transform: translateX(-50%); left: 0%;
+  box-shadow: 0 1px 4px rgba(0,0,0,.4);
+}
+
+/* ---------- 音量 ---------- */
+.ph-vol { display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; width: 100%; }
+.ph-vol-ic { width: 18px; height: 18px; fill: rgba(255,255,255,.7); flex: 0 0 auto; }
+.ph-vol-range { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px;
+  background: rgba(255,255,255,.18); outline: none; cursor: pointer; }
+.ph-vol-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: #ffe9a8; border: 2px solid #d9a416; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
+.ph-vol-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%;
+  background: #ffe9a8; border: 2px solid #d9a416; }
+
+/* ---------- 氛围呼吸光 ---------- */
+.ph-ambient {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 130%; height: 130%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,215,0,.14) 0%, rgba(255,215,0,.05) 45%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  filter: blur(6px);
+}
+.ph-ambient.lit { opacity: 1; }
