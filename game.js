@@ -138,11 +138,7 @@ class BGMusic {
     this.audio.preload = "auto";
     // 跨域 mp3 + MediaElementSource：必须 anonymous，否则 Web Audio 图输出静音
     this.audio.crossOrigin = "anonymous";
-    this.audio.volume = 0.5;
-    try {
-      var sv0 = parseFloat(localStorage.getItem("phVol"));
-      if (!isNaN(sv0) && sv0 >= 0 && sv0 <= 1) this.audio.volume = sv0;
-    } catch (e) {}
+    this.audio.volume = 0.8;
 
     const savedEnabled = localStorage.getItem("bgMusicEnabled");
     this.enabled = savedEnabled === null ? true : savedEnabled === "true";
@@ -629,7 +625,6 @@ document.addEventListener("visibilitychange", function () {
   var playPauseBtn = document.getElementById("ph-playpause");
   var prevBtn = document.getElementById("ph-prev");
   var nextBtn = document.getElementById("ph-next");
-  var volRange = document.getElementById("ph-vol");
   var barEl = document.getElementById("ph-bar");
   var barFill = document.getElementById("ph-bar-fill");
   var barDot = document.getElementById("ph-bar-dot");
@@ -656,10 +651,11 @@ document.addEventListener("visibilitychange", function () {
   var vinylAngle = 0;
   var vinylVel = 0;
   var specSmooth = [0, 0, 0, 0, 0];
-  var specHistory = [];
+  // 三条飘带各自历史与相位，相位差驱动缠绕律动
+  var specHist = [[], [], []];
+  var specPhase = [0, 2.1, 4.2];
   var specLastSampleAt = 0;
   var specLastEnergy = 0;
-  var specPhase = 0;
   var lastPlaying = null;
 
   function pad2(n) {
@@ -768,6 +764,29 @@ document.addEventListener("visibilitychange", function () {
     return SPEC_COLOR_LUT[(t * 63 + 0.5) | 0];
   }
 
+  // 三条飘带配色（粉橙 / 金青 / 蓝紫），绘制时按段再插值
+  var RIBBON_COLORS = [
+    [[255, 45, 149], [255, 140, 66], [255, 200, 100]],
+    [[255, 224, 102], [64, 224, 255], [120, 200, 255]],
+    [[61, 90, 255], [180, 100, 255], [255, 80, 200]],
+  ];
+  function ribbonColor(ri, t) {
+    var stops = RIBBON_COLORS[ri];
+    var n = stops.length - 1;
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+    var pos = t * n;
+    var seg = pos | 0;
+    if (seg >= n) seg = n - 1;
+    var localT = pos - seg;
+    var c1 = stops[seg];
+    var c2 = stops[seg + 1];
+    var r = (c1[0] + (c2[0] - c1[0]) * localT + 0.5) | 0;
+    var g = (c1[1] + (c2[1] - c1[1]) * localT + 0.5) | 0;
+    var b = (c1[2] + (c2[2] - c1[2]) * localT + 0.5) | 0;
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+
   function drawSpectrum() {
     if (!spectrum || !phActive) return;
     var ctx = spectrum.getContext("2d");
@@ -796,13 +815,24 @@ document.addEventListener("visibilitychange", function () {
     var energy = bgMusic.energy || 0;
     var bass = specSmooth[0] || 0;
     var body = specSmooth[1] || 0;
+    var midB = specSmooth[2] || 0;
+    var high = (specSmooth[3] || 0) * 0.6 + (specSmooth[4] || 0) * 0.4;
     var transient = Math.max(0, energy - specLastEnergy);
 
+    // 每条飘带侧重不同频段：0 低音、1 中段、2 高音
+    var drive = [
+      { amp: bass, speed: 0.014, phaseMul: 0.28, offsetY: 0 },
+      { amp: body * 0.7 + midB * 0.3, speed: 0.022, phaseMul: 0.38, offsetY: 0 },
+      { amp: high * 0.8 + midB * 0.2, speed: 0.031, phaseMul: 0.48, offsetY: 0 },
+    ];
+
     if (!playing) {
-      specHistory = [];
+      for (var ri = 0; ri < 3; ri++) specHist[ri] = [];
       specLastSampleAt = now;
       specLastEnergy = 0;
-      specPhase = 0;
+      specPhase[0] = 0;
+      specPhase[1] = 2.1;
+      specPhase[2] = 4.2;
     } else {
       if (!specLastSampleAt) specLastSampleAt = now;
       var elapsed = now - specLastSampleAt;
@@ -810,90 +840,127 @@ document.addEventListener("visibilitychange", function () {
 
       for (var s = 0; s < steps; s++) {
         var sampleEnergy = energy < 0 ? 0 : energy > 1 ? 1 : energy;
-        var sampleBass = bass < 0 ? 0 : bass > 1 ? 1 : bass;
-        var sampleBody = body < 0 ? 0 : body > 1 ? 1 : body;
-
-        var amp = 14 + sampleEnergy * 56 + sampleBass * 62 + transient * 88;
-
-        specPhase += 0.018 + sampleBass * 0.05 + sampleBody * 0.016;
-
-        var skewed = specPhase + 0.32 * Math.sin(specPhase);
-        var tri = (2 / Math.PI) * Math.asin(Math.sin(skewed));
-
-        var swell = 0.6 + 0.4 * Math.max(0, Math.sin(specPhase * 0.22 + 0.4));
         var punch = transient * 3.5 > 1 ? 1 : transient * 3.5;
 
-        var sample = tri * amp * (swell + punch * 0.5);
+        for (var ri = 0; ri < 3; ri++) {
+          var d = drive[ri];
+          var aBand = d.amp < 0 ? 0 : d.amp > 1 ? 1 : d.amp;
+          // 相位以不同速度推进，互相错开形成缠绕
+          specPhase[ri] +=
+            d.speed +
+            aBand * 0.04 +
+            sampleEnergy * 0.012 +
+            (ri === 0 ? bass * 0.03 : 0);
 
-        if (specHistory.length > 0) {
-          sample = sample * 0.82 + specHistory[specHistory.length - 1] * 0.18;
+          var skewed =
+            specPhase[ri] +
+            d.phaseMul * Math.sin(specPhase[ri] * (1.1 + ri * 0.15));
+          var tri = (2 / Math.PI) * Math.asin(Math.sin(skewed));
+          // 邻条相位交叉项：让三条互相「缠」
+          var cross =
+            0.22 *
+            Math.sin(specPhase[(ri + 1) % 3] * 0.9 + ri) *
+            (0.4 + aBand);
+          var swell =
+            0.55 +
+            0.45 * Math.max(0, Math.sin(specPhase[ri] * 0.2 + ri * 0.7));
+          var baseAmp =
+            10 + sampleEnergy * 42 + aBand * 58 + punch * (50 - ri * 8);
+          var sample = (tri + cross) * baseAmp * (swell + punch * 0.35);
+
+          var hist = specHist[ri];
+          if (hist.length > 0) {
+            sample = sample * 0.8 + hist[hist.length - 1] * 0.2;
+          }
+          hist.push(sample);
+          if (hist.length > 96) hist.shift();
         }
-
-        specHistory.push(sample);
-        if (specHistory.length > 96) specHistory.shift();
       }
 
       if (steps > 0) specLastSampleAt += steps * 42;
       specLastEnergy = energy;
     }
 
-    var points = specHistory.length;
-    if (points < 2) {
-      return;
-    }
+    var points = specHist[0].length;
+    if (points < 2) return;
 
+    // 三条共用归一化，避免某一条独占振幅
     var maxAbs = 1;
-    for (var m = 0; m < points; m++) {
-      var a = specHistory[m];
-      if (a < 0) a = -a;
-      if (a > maxAbs) maxAbs = a;
+    for (var ri = 0; ri < 3; ri++) {
+      var hist = specHist[ri];
+      for (var m = 0; m < hist.length; m++) {
+        var a = hist[m];
+        if (a < 0) a = -a;
+        if (a > maxAbs) maxAbs = a;
+      }
     }
 
     if (!drawSpectrum._xs) {
       drawSpectrum._xs = new Float32Array(128);
-      drawSpectrum._ys = new Float32Array(128);
+      drawSpectrum._ys0 = new Float32Array(128);
+      drawSpectrum._ys1 = new Float32Array(128);
+      drawSpectrum._ys2 = new Float32Array(128);
     }
     var xs = drawSpectrum._xs;
-    var ys = drawSpectrum._ys;
+    var yss = [drawSpectrum._ys0, drawSpectrum._ys1, drawSpectrum._ys2];
     var invMax = 1 / maxAbs;
     var invN = 1 / (points - 1);
+    var scaleY = h * 0.42;
 
     for (var i = 0; i < points; i++) {
       var t = i * invN;
       xs[i] = (1 - t) * w;
-      var normalized = specHistory[i] * invMax;
-      var y = mid + normalized * (h * 0.55);
-      var dy = (y - mid) / (h * 0.52);
-      var dy2 = dy * dy;
-      y = mid + (dy * (h * 0.52)) / (1 + dy2 * 0.35);
-      ys[i] = y;
+      for (var ri = 0; ri < 3; ri++) {
+        var normalized = specHist[ri][i] * invMax;
+        // 垂直微偏：三条中心略错开，交叉更明显
+        var yOff = (ri - 1) * (h * 0.06);
+        var y = mid + yOff + normalized * scaleY;
+        var dy = (y - mid) / (h * 0.5);
+        var dy2 = dy * dy;
+        y = mid + (dy * (h * 0.5)) / (1 + dy2 * 0.32);
+        yss[ri][i] = y;
+      }
     }
 
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.globalAlpha = playing ? 0.95 : 0.28;
-    ctx.lineWidth = playing ? 2 : 1.2;
-    ctx.shadowBlur = playing ? 8 : 0;
-    ctx.shadowColor = "rgba(255, 215, 0, 0.55)";
 
-    var bandsN = 5;
-    var seg = Math.max(1, (points / bandsN) | 0);
-    for (var k = 0; k < bandsN; k++) {
-      var i0 = k * seg;
-      var i1 = k === bandsN - 1 ? points - 1 : (k + 1) * seg;
-      if (i1 <= i0) continue;
-      var tMid = (i0 + i1) * 0.5 * invN;
-      ctx.beginPath();
-      ctx.moveTo(xs[i0], ys[i0]);
-      for (var i = i0 + 1; i < i1; i++) {
-        var xc = (xs[i] + xs[i + 1]) / 2;
-        var yc = (ys[i] + ys[i + 1]) / 2;
-        ctx.quadraticCurveTo(xs[i], ys[i], xc, yc);
+    // 从后往前画：先画偏暗的、再画亮的，叠出缠绕层次
+    var drawOrder = [2, 0, 1];
+    for (var o = 0; o < 3; o++) {
+      var ri = drawOrder[o];
+      var ys = yss[ri];
+      var alpha = playing ? 0.55 + o * 0.15 : 0.18;
+      var lw = playing ? 1.6 + o * 0.35 : 1.1;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = lw;
+      ctx.shadowBlur = playing ? 6 + o * 2 : 0;
+      ctx.shadowColor =
+        ri === 0
+          ? "rgba(255, 100, 80, 0.45)"
+          : ri === 1
+            ? "rgba(255, 215, 0, 0.5)"
+            : "rgba(100, 140, 255, 0.45)";
+
+      var segN = 6;
+      var seg = Math.max(1, (points / segN) | 0);
+      for (var k = 0; k < segN; k++) {
+        var i0 = k * seg;
+        var i1 = k === segN - 1 ? points - 1 : (k + 1) * seg;
+        if (i1 <= i0) continue;
+        var tMid = (i0 + i1) * 0.5 * invN;
+        ctx.beginPath();
+        ctx.moveTo(xs[i0], ys[i0]);
+        for (var i = i0 + 1; i < i1; i++) {
+          var xc = (xs[i] + xs[i + 1]) / 2;
+          var yc = (ys[i] + ys[i + 1]) / 2;
+          ctx.quadraticCurveTo(xs[i], ys[i], xc, yc);
+        }
+        ctx.lineTo(xs[i1], ys[i1]);
+        ctx.strokeStyle = ribbonColor(ri, tMid);
+        ctx.stroke();
       }
-      ctx.lineTo(xs[i1], ys[i1]);
-      ctx.strokeStyle = specColorAt(tMid);
-      ctx.stroke();
     }
 
     ctx.shadowBlur = 0;
@@ -978,20 +1045,6 @@ document.addEventListener("visibilitychange", function () {
     bgMusic.skipNext();
     bumpArmOnSeek();
   });
-  // 音量
-  function applyVol() {
-    var v = volRange ? (volRange.value / 100) : 0.8;
-    try { bgMusic.audio.volume = v; } catch (e) {}
-    try { localStorage.setItem("phVol", String(v)); } catch (e) {}
-  }
-  if (volRange) {
-    try {
-      var sv = parseFloat(localStorage.getItem("phVol"));
-      if (!isNaN(sv)) volRange.value = Math.round(sv * 100);
-    } catch (e) {}
-    volRange.addEventListener("input", applyVol);
-    applyVol();
-  }
   // 进度条
   function fmtT(s) {
     if (!isFinite(s) || s < 0) s = 0;

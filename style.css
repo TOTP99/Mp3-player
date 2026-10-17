@@ -173,46 +173,44 @@ body {
   }
   .ph-msg { font-size: 10px; margin-top: 4px; }
 
-  /* 竖屏：控制区纵向排列，避免 progress/vol 的 width:100% 把按键挤出屏幕 */
+  /* 竖屏：全部控制同一行 —— 播放键 | 进度 | 模式键 */
   .ph-controls {
     margin-top: 9px;
     width: 100%;
     flex-shrink: 0;
   }
   .ph-transport {
-    flex-direction: column;
+    flex-direction: row;
     flex-wrap: nowrap;
-    gap: 8px;
+    align-items: center;
+    gap: 6px;
     max-width: 100%;
     width: 100%;
   }
   .ph-transport > .ph-btn-group {
-    flex-shrink: 0;
-  }
-  .ph-progress,
-  .ph-vol {
-    width: 100%;
-    box-sizing: border-box;
-    padding-left: 4px;
-    padding-right: 4px;
+    flex: 0 0 auto;
   }
   .ph-progress {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    padding: 0 2px;
+    gap: 4px;
   }
-  .ph-vol {
-    padding-top: 0;
-    padding-bottom: 2px;
+  .ph-time {
+    font-size: 9px;
+    min-width: 28px;
   }
   .ph-btn-group {
-    padding: 5px 8px;
-    border-radius: 14px;
+    padding: 4px 6px;
+    border-radius: 12px;
+    gap: 4px;
   }
   .ph-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 9px;
-    font-size: 19px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 17px;
   }
 }
 
@@ -225,9 +223,10 @@ body {
   .ph-reel { width: 36px; height: 36px; font-size: 17px; }
   .ph-spin { width: 42px; height: 42px; font-size: 10px; }
   .ph-controls { margin-top: 6px; }
-  .ph-transport { gap: 6px; }
-  .ph-btn { width: 34px; height: 34px; font-size: 16px; }
-  .ph-btn-group { padding: 4px 6px; }
+  .ph-transport { gap: 4px; }
+  .ph-btn { width: 32px; height: 32px; font-size: 15px; }
+  .ph-btn-group { padding: 3px 5px; gap: 3px; }
+  .ph-time { font-size: 8px; min-width: 24px; }
 }
 
 @media (orientation: portrait) and (min-height: 900px) {
@@ -1095,13 +1094,13 @@ body {
 
 /* ---------- 进度条 ---------- */
 .ph-progress {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 12px; width: 100%;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 4px; min-width: 0; flex: 1 1 auto;
 }
-.ph-time { font-size: 11px; color: rgba(255,255,255,.65); min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; }
+.ph-time { font-size: 10px; color: rgba(255,255,255,.65); min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; }
 .ph-bar {
   position: relative; flex: 1; height: 22px; cursor: pointer;
-  display: flex; align-items: center; touch-action: none;
+  display: flex; align-items: center; touch-action: none; min-width: 40px;
 }
 .ph-bar::before {
   content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 2px;
@@ -1117,16 +1116,6 @@ body {
   transform: translateX(-50%); left: 0%;
   box-shadow: 0 1px 4px rgba(0,0,0,.4);
 }
-
-/* ---------- 音量 ---------- */
-.ph-vol { display: flex; align-items: center; gap: 8px; padding: 4px 12px 8px; width: 100%; }
-.ph-vol-ic { width: 18px; height: 18px; fill: rgba(255,255,255,.7); flex: 0 0 auto; }
-.ph-vol-range { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px;
-  background: rgba(255,255,255,.18); outline: none; cursor: pointer; }
-.ph-vol-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-  background: #ffe9a8; border: 2px solid #d9a416; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
-.ph-vol-range::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%;
-  background: #ffe9a8; border: 2px solid #d9a416; }
 
 /* ---------- 氛围呼吸光 ---------- */
 .ph-ambient {
