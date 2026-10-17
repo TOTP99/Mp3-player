@@ -176,7 +176,8 @@ body {
   .ph-controls {
     margin-top: 9px;
   }
-  .ph-transport { gap: 14px; }
+  .ph-transport { gap: 10px; flex-wrap: wrap; }
+  .ph-progress, .ph-vol { flex: 1 1 100%; }
   .ph-btn-group {
     padding: 5px 8px;
     border-radius: 14px;
