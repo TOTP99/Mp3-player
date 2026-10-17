@@ -173,7 +173,7 @@ body {
   }
   .ph-msg { font-size: 10px; margin-top: 4px; }
 
-  /* 竖屏：全部控制同一行 —— 播放键 | 进度 | 模式键 */
+  /* 竖屏：第一行五个控制键，第二行进度条 */
   .ph-controls {
     margin-top: 9px;
     width: 100%;
@@ -181,25 +181,30 @@ body {
   }
   .ph-transport {
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 8px 10px;
     max-width: 100%;
     width: 100%;
   }
   .ph-transport > .ph-btn-group {
     flex: 0 0 auto;
   }
+  /* HTML 顺序是 播放组 → 进度 → 模式组；用 order 把两组合到第一行 */
+  .ph-transport > .ph-btn-group:first-of-type { order: 1; }
+  .ph-transport > .ph-btn-group:last-of-type { order: 2; }
   .ph-progress {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: auto;
-    padding: 0 2px;
-    gap: 4px;
+    order: 3;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 100%;
+    padding: 2px 4px 0;
+    gap: 6px;
   }
   .ph-time {
-    font-size: 9px;
-    min-width: 28px;
+    font-size: 10px;
+    min-width: 30px;
   }
   .ph-btn-group {
     padding: 4px 6px;

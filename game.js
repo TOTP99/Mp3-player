@@ -926,43 +926,88 @@ document.addEventListener("visibilitychange", function () {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
-    // 从后往前画：先画偏暗的、再画亮的，叠出缠绕层次
+    // 每条飘带视觉参数：低音厚暖、中音最亮、高音细+轻虚线
+    // glowW = 光晕线宽，coreW = 芯线宽；high 用 setLineDash
+    var ribbonStyle = [
+      {
+        glowW: playing ? 7.5 : 3.5,
+        coreW: playing ? 2.2 : 1.2,
+        glowA: playing ? 0.28 : 0.1,
+        coreA: playing ? 0.92 : 0.28,
+        blur: playing ? 12 : 0,
+        shadow: "rgba(255, 90, 60, 0.55)",
+        dash: null,
+      },
+      {
+        glowW: playing ? 6.5 : 3,
+        coreW: playing ? 2.0 : 1.15,
+        glowA: playing ? 0.32 : 0.1,
+        coreA: playing ? 0.98 : 0.3,
+        blur: playing ? 14 : 0,
+        shadow: "rgba(255, 215, 0, 0.6)",
+        dash: null,
+      },
+      {
+        glowW: playing ? 5 : 2.5,
+        coreW: playing ? 1.4 : 1,
+        glowA: playing ? 0.22 : 0.08,
+        coreA: playing ? 0.85 : 0.22,
+        blur: playing ? 9 : 0,
+        shadow: "rgba(120, 140, 255, 0.5)",
+        dash: playing ? [5, 4] : [3, 4],
+      },
+    ];
+
+    function strokeRibbonSeg(ys, i0, i1) {
+      ctx.beginPath();
+      ctx.moveTo(xs[i0], ys[i0]);
+      for (var i = i0 + 1; i < i1; i++) {
+        var xc = (xs[i] + xs[i + 1]) / 2;
+        var yc = (ys[i] + ys[i + 1]) / 2;
+        ctx.quadraticCurveTo(xs[i], ys[i], xc, yc);
+      }
+      ctx.lineTo(xs[i1], ys[i1]);
+      ctx.stroke();
+    }
+
+    // 从后往前：高 → 低 → 中（中音最后画，最亮在最前）
     var drawOrder = [2, 0, 1];
+    var segN = 6;
+    var seg = Math.max(1, (points / segN) | 0);
+
     for (var o = 0; o < 3; o++) {
       var ri = drawOrder[o];
       var ys = yss[ri];
-      var alpha = playing ? 0.55 + o * 0.15 : 0.18;
-      var lw = playing ? 1.6 + o * 0.35 : 1.1;
-      ctx.globalAlpha = alpha;
-      ctx.lineWidth = lw;
-      ctx.shadowBlur = playing ? 6 + o * 2 : 0;
-      ctx.shadowColor =
-        ri === 0
-          ? "rgba(255, 100, 80, 0.45)"
-          : ri === 1
-            ? "rgba(255, 215, 0, 0.5)"
-            : "rgba(100, 140, 255, 0.45)";
+      var st = ribbonStyle[ri];
 
-      var segN = 6;
-      var seg = Math.max(1, (points / segN) | 0);
+      if (st.dash) ctx.setLineDash(st.dash);
+      else ctx.setLineDash([]);
+
+      ctx.shadowBlur = st.blur;
+      ctx.shadowColor = st.shadow;
+
       for (var k = 0; k < segN; k++) {
         var i0 = k * seg;
         var i1 = k === segN - 1 ? points - 1 : (k + 1) * seg;
         if (i1 <= i0) continue;
         var tMid = (i0 + i1) * 0.5 * invN;
-        ctx.beginPath();
-        ctx.moveTo(xs[i0], ys[i0]);
-        for (var i = i0 + 1; i < i1; i++) {
-          var xc = (xs[i] + xs[i + 1]) / 2;
-          var yc = (ys[i] + ys[i + 1]) / 2;
-          ctx.quadraticCurveTo(xs[i], ys[i], xc, yc);
-        }
-        ctx.lineTo(xs[i1], ys[i1]);
-        ctx.strokeStyle = ribbonColor(ri, tMid);
-        ctx.stroke();
+        var col = ribbonColor(ri, tMid);
+
+        // 1) 光晕底笔：粗、半透明
+        ctx.globalAlpha = st.glowA;
+        ctx.lineWidth = st.glowW;
+        ctx.strokeStyle = col;
+        strokeRibbonSeg(ys, i0, i1);
+
+        // 2) 芯线：细、更亮
+        ctx.globalAlpha = st.coreA;
+        ctx.lineWidth = st.coreW;
+        ctx.strokeStyle = col;
+        strokeRibbonSeg(ys, i0, i1);
       }
     }
 
+    ctx.setLineDash([]);
     ctx.shadowBlur = 0;
     ctx.restore();
   }
