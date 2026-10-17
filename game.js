@@ -136,7 +136,13 @@ class BGMusic {
     this.audio = new Audio();
     this.audio.loop = false; // 由 ended/error 事件控制切歌
     this.audio.preload = "auto";
+    // 跨域 mp3 + MediaElementSource：必须 anonymous，否则 Web Audio 图输出静音
+    this.audio.crossOrigin = "anonymous";
     this.audio.volume = 0.5;
+    try {
+      var sv0 = parseFloat(localStorage.getItem("phVol"));
+      if (!isNaN(sv0) && sv0 >= 0 && sv0 <= 1) this.audio.volume = sv0;
+    } catch (e) {}
 
     const savedEnabled = localStorage.getItem("bgMusicEnabled");
     this.enabled = savedEnabled === null ? true : savedEnabled === "true";
@@ -507,19 +513,39 @@ class BGMusic {
   async play() {
     if (!this.audio) return;
     this.ensureAnalyser();
+    this._resumeCtx();
     if (!this.enabled) {
       this.enabled = true;
       localStorage.setItem("bgMusicEnabled", "true");
     }
-    this._fadeGainTo(1, 0.05);
+    if (this._gain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        this._gain.gain.cancelScheduledValues(now);
+        this._gain.gain.setValueAtTime(1, now);
+      } catch (e) {}
+    } else {
+      this._fadeGainTo(1, 0.05);
+    }
     this._playAudio();
+    this._requestWakeLock();
   }
 
   // 需在用户手势（点击/触摸/按键）中调用，否则浏览器会拦截自动播放
   async tryPlay() {
     if (!this.enabled) return;
     this.ensureAnalyser();
-    this._fadeGainTo(1, 0.05);
+    this._resumeCtx();
+    // 确保主增益不为 0（pause 淡出后若超时未复位，会一直无声）
+    if (this._gain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        this._gain.gain.cancelScheduledValues(now);
+        this._gain.gain.setValueAtTime(1, now);
+      } catch (e) {}
+    } else {
+      this._fadeGainTo(1, 0.05);
+    }
     this._playAudio();
     this._requestWakeLock();
   }
