@@ -1,95 +1,111 @@
-/* bg-audio.js —— 后台音频接力（iOS 锁屏音乐不停）
+/* bg-audio.js —— 后台音频接力（iOS 锁屏音乐不停）v3
  *
  * 问题：主播放走 Web Audio（MediaElementSource → 增强链），iPhone 锁屏时
- * AudioContext 被挂起，音乐会停。iOS Safari 又不支持 Wake Lock API。
+ * AudioContext 被挂起，音乐停。iOS 只允许"已经在播"的音频进后台继续，
+ * 不允许锁屏后再 play() 新音频（v1/v2 在此失败）。
  *
- * 方案：页面进后台时，用一个原生 <audio>（不走 Web Audio，iOS 后台播放
- * 正常）无缝接力；回前台再把位置还给主 audio。
+ * 方案：用户点播放时，接力 audio 就以静音方式并行播放同一首（保持位置
+ * 同步）；锁屏时只做 relay.muted=false（改音量，不是启动播放，iOS 放行），
+ * 并暂停主 audio；回前台再换回来。
  * 本文件不改 game.js，只做实例方法包装。
- *
- * v2 修复：
- * 1. iOS 锁屏瞬间可能先暂停主 audio，导致 isPlaying() 为 false —— 改用
- *    自维护的 wantPlay 标志，不依赖 isPlaying()
- * 2. 接力 audio 提前在用户手势里解锁（play→pause），避免后台 play() 被拒
  */
 (function () {
   'use strict';
   if (typeof bgMusic === 'undefined' || !bgMusic || !bgMusic.audio) return;
 
-  var relayAudio = null;   // 接力用的原生 Audio
-  var relaying = false;    // 是否正在接力
-  var wantPlay = false;    // 用户意图：是否想播（不受系统暂停影响）
-  var relayUnlocked = false;
+  var relayAudio = null;
+  var relaying = false;   // 后台接力中（已取消静音）
+  var wantPlay = false;
+  var syncBound = false;
 
   function ensureRelayAudio() {
     if (relayAudio) return relayAudio;
     var a = new Audio();
     a.preload = 'auto';
+    a.muted = true; // 前台全程静音并行
     a.addEventListener('ended', onRelayEnded);
     relayAudio = a;
     return a;
   }
 
-  /* 在用户手势里预解锁接力 audio（必须在 tap/click 上下文中调用） */
-  function unlockRelay() {
-    if (relayUnlocked) return;
+  /* 主 audio 的 timeupdate：保持接力位置同步 */
+  function bindSync() {
+    if (syncBound) return;
+    syncBound = true;
     try {
+      bgMusic.audio.addEventListener('timeupdate', function () {
+        try {
+          if (!relayAudio || relaying) return;
+          var main = bgMusic.audio;
+          if (!main.src) return;
+          if (relayAudio.src !== main.src) {
+            relayAudio.src = main.src;
+            relayAudio.currentTime = main.currentTime || 0;
+            var p = relayAudio.play();
+            if (p && p.catch) p.catch(function () {});
+            return;
+          }
+          var drift = Math.abs((relayAudio.currentTime || 0) - (main.currentTime || 0));
+          if (drift > 0.75 && !main.paused) {
+            relayAudio.currentTime = main.currentTime || 0;
+          }
+          // 主在播而接力停了（被系统掐了），补拉起来
+          if (!main.paused && relayAudio.paused && relayAudio.src) {
+            var p2 = relayAudio.play();
+            if (p2 && p2.catch) p2.catch(function () {});
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
+  /* 用户手势内：启动静音并行 */
+  function startParallel() {
+    try {
+      var main = bgMusic.audio;
+      if (!main || !main.src) return;
       var a = ensureRelayAudio();
+      bindSync();
+      if (a.src !== main.src) a.src = main.src;
+      try { a.currentTime = main.currentTime || 0; } catch (e) {}
       a.muted = true;
       var p = a.play();
-      var done = function () {
-        try { a.pause(); } catch (e) {}
-        a.muted = false;
-        relayUnlocked = true;
-      };
-      if (p && typeof p.then === 'function') p.then(done, function () {
-        try { a.muted = false; } catch (e) {}
-      });
-      else done();
+      if (p && p.catch) p.catch(function () {});
     } catch (e) {}
   }
 
-  function startRelay() {
-    if (relaying) return;
-    var main = bgMusic.audio;
-    if (!main || !main.src) return;
+  function stopParallel() {
     try {
-      var a = ensureRelayAudio();
-      if (a.src !== main.src) a.src = main.src;
-      var pos = 0;
-      try { pos = main.currentTime || 0; } catch (e) {}
-      // 如果主 audio 刚被系统暂停，currentTime 仍有效
-      try { a.currentTime = pos; } catch (e) {}
-      var p = a.play();
-      if (p && typeof p.catch === 'function') {
-        p.catch(function () {
-          // 被拒则 600ms 后重试一次
-          setTimeout(function () {
-            if (!relaying && wantPlay && document.hidden) {
-              try {
-                var p2 = a.play();
-                if (p2 && p2.catch) p2.catch(function () {});
-                else { relaying = true; try { main.pause(); } catch (e) {} }
-              } catch (e) {}
-            }
-          }, 600);
-        });
-      }
-      relaying = true;
-      try { if (!main.paused) main.pause(); } catch (e) {}
-    } catch (e) {}
-  }
-
-  function stopRelay() {
-    var pos = 0;
-    try {
-      if (relayAudio) {
-        pos = relayAudio.currentTime || 0;
-        relayAudio.pause();
-      }
+      if (relayAudio) relayAudio.pause();
     } catch (e) {}
     relaying = false;
-    return pos;
+  }
+
+  function onHidden() {
+    if (!wantPlay || !bgMusic.enabled) return;
+    try {
+      var a = ensureRelayAudio();
+      // 关键：只取消静音，不调 play()（已在播，iOS 视为继续）
+      a.muted = false;
+      relaying = true;
+      try { bgMusic.audio.pause(); } catch (e) {}
+    } catch (e) {}
+  }
+
+  function onVisible() {
+    if (!relaying) return;
+    relaying = false;
+    try {
+      var pos = relayAudio ? relayAudio.currentTime || 0 : 0;
+      relayAudio.muted = true;
+      relayAudio.pause();
+      if (wantPlay && bgMusic.enabled) {
+        try { bgMusic.audio.currentTime = pos; } catch (e) {}
+        try { bgMusic.tryPlay(); } catch (e) {}
+        // 回来后重建并行
+        setTimeout(startParallel, 800);
+      }
+    } catch (e) {}
   }
 
   function onRelayEnded() {
@@ -98,31 +114,29 @@
     try { bgMusic._advance(); } catch (e) {}
     setTimeout(function () {
       try {
-        if (document.hidden && wantPlay && bgMusic.enabled) startRelay();
+        if (document.hidden && wantPlay && bgMusic.enabled) {
+          // 新一首：主 audio 已切歌，把接力跟上并取消静音
+          var main = bgMusic.audio;
+          if (relayAudio && main.src && relayAudio.src !== main.src) {
+            relayAudio.src = main.src;
+            relayAudio.currentTime = 0;
+            var p = relayAudio.play();
+            if (p && p.catch) p.catch(function () {});
+          }
+          relayAudio.muted = false;
+          relaying = true;
+          try { main.pause(); } catch (e) {}
+        }
       } catch (e) {}
     }, 900);
   }
 
-  /* 进/出后台切换：用 wantPlay 而不是 isPlaying() */
-  function onHidden() {
-    if (wantPlay && bgMusic.enabled) startRelay();
-  }
-  function onVisible() {
-    if (relaying) {
-      var pos = stopRelay();
-      if (wantPlay && bgMusic.enabled) {
-        try { bgMusic.audio.currentTime = pos; } catch (e) {}
-        try { bgMusic.tryPlay(); } catch (e) {}
-      }
-    }
-  }
   document.addEventListener('visibilitychange', function () {
     try {
       if (document.hidden) onHidden();
       else onVisible();
     } catch (e) {}
   });
-  /* 兜底：部分 iOS 上 pagehide 比 visibilitychange 更可靠 */
   window.addEventListener('pagehide', function () {
     try { onHidden(); } catch (e) {}
   });
@@ -134,15 +148,22 @@
   var origPlay = bgMusic.play.bind(bgMusic);
   bgMusic.play = function () {
     wantPlay = true;
-    unlockRelay();
-    return origPlay();
+    var r = origPlay();
+    // 手势内启动并行（主 audio 已开始播）
+    setTimeout(startParallel, 300);
+    return r;
   };
 
   var origTryPlay = bgMusic.tryPlay ? bgMusic.tryPlay.bind(bgMusic) : null;
   if (origTryPlay) {
     bgMusic.tryPlay = function () {
       var r = origTryPlay();
-      try { if (bgMusic.enabled) { wantPlay = true; unlockRelay(); } } catch (e) {}
+      try {
+        if (bgMusic.enabled) {
+          wantPlay = true;
+          setTimeout(startParallel, 300);
+        }
+      } catch (e) {}
       return r;
     };
   }
@@ -150,40 +171,34 @@
   var origPause = bgMusic.pause.bind(bgMusic);
   bgMusic.pause = function () {
     wantPlay = false;
-    if (relaying) stopRelay();
+    stopParallel();
     return origPause();
   };
 
-  var origSkipNext = bgMusic.skipNext.bind(bgMusic);
-  bgMusic.skipNext = function () {
-    var wasRelay = relaying;
-    if (wasRelay) stopRelay();
-    wantPlay = true;
-    unlockRelay();
-    var r = origSkipNext();
-    if (wasRelay) {
+  function wrapSkip(orig) {
+    return function () {
+      var wasRelay = relaying;
+      if (wasRelay) {
+        relaying = false;
+        try { relayAudio.muted = true; relayAudio.pause(); } catch (e) {}
+      }
+      wantPlay = true;
+      var r = orig();
       setTimeout(function () {
-        try { if (document.hidden && wantPlay && bgMusic.enabled) startRelay(); } catch (e) {}
+        startParallel();
+        try {
+          if (wasRelay && document.hidden && wantPlay && bgMusic.enabled) {
+            relayAudio.muted = false;
+            relaying = true;
+            try { bgMusic.audio.pause(); } catch (e) {}
+          }
+        } catch (e) {}
       }, 600);
-    }
-    return r;
-  };
+      return r;
+    };
+  }
+  bgMusic.skipNext = wrapSkip(bgMusic.skipNext.bind(bgMusic));
+  bgMusic.skipPrev = wrapSkip(bgMusic.skipPrev.bind(bgMusic));
 
-  var origSkipPrev = bgMusic.skipPrev.bind(bgMusic);
-  bgMusic.skipPrev = function () {
-    var wasRelay = relaying;
-    if (wasRelay) stopRelay();
-    wantPlay = true;
-    unlockRelay();
-    var r = origSkipPrev();
-    if (wasRelay) {
-      setTimeout(function () {
-        try { if (document.hidden && wantPlay && bgMusic.enabled) startRelay(); } catch (e) {}
-      }, 600);
-    }
-    return r;
-  };
-
-  /* 调试：localStorage 记一次接力状态，方便定位 */
   bgMusic.isRelaying = function () { return relaying; };
 })();
