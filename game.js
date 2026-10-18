@@ -158,6 +158,7 @@ class BGMusic {
     this._playing = false;
     this._bandBins = null;
     this._analyserFailed = false;
+    this._userPaused = false; // 用户/系统主动暂停后为 true，回前台不自动重播
 
     this.audio.addEventListener("ended", () => this._advance());
     this.audio.addEventListener("error", () => this._advance());
@@ -295,6 +296,7 @@ class BGMusic {
   }
 
   _playAudio() {
+    this._userPaused = false;
     this._resumeCtx();
     try {
       const p = this.audio.play();
@@ -571,6 +573,7 @@ class BGMusic {
   }
 
   pause() {
+    this._userPaused = true;
     this._releaseWakeLock();
     try {
       this.audio.pause();
@@ -627,7 +630,7 @@ document.addEventListener("keydown", unlockAudioOnce, true);
 document.addEventListener("visibilitychange", function () {
   if (!document.hidden) {
     try {
-      bgMusic.tryPlay();
+      if (!bgMusic._userPaused) bgMusic.tryPlay();
     } catch (e) {}
     try {
       if (bgMusic.isPlaying()) bgMusic._requestWakeLock();

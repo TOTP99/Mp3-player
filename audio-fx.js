@@ -87,13 +87,16 @@
   async function forceUnlock() {
     if (!scriptsReady()) return false;
     try {
+      // 点击前是否正在播：正在播就不能被打断，也不能因点圆点而开始播
+      var wasPlaying = false;
+      try { wasPlaying = bgMusic.isPlaying(); } catch (e) {}
       bgMusic.ensureAnalyser();
       if (bgMusic.ctx && bgMusic.ctx.state === "suspended") {
         await bgMusic.ctx.resume();
       }
-      // 静音 priming：部分机型需要一次真实 play→pause 才真正放行
+      // 静音 priming：仅在没在播时做（部分机型需要一次真实 play→pause 才放行）
       var a = bgMusic.audio;
-      if (a) {
+      if (a && !wasPlaying) {
         var wasMuted = a.muted;
         a.muted = true;
         try {
@@ -106,10 +109,6 @@
         a.muted = wasMuted;
       }
       unlockedOnce = true;
-      // 冒泡/同步触发已有 tryPlay 路径（若用户已开启音乐）
-      try {
-        if (bgMusic.enabled) bgMusic.tryPlay();
-      } catch (e) {}
       refresh();
       return true;
     } catch (e) {
