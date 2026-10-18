@@ -146,6 +146,13 @@ class BGMusic {
         ? savedNum
         : 1;
 
+    // 歌曲间距（秒）：0=无，长按唱片设置
+    var savedGap = parseInt(localStorage.getItem("bgMusicGap") || "0", 10);
+    this.songGap = (savedGap === 3 || savedGap === 6 || savedGap === 9) ? savedGap : 0;
+    this._gapTimer = null;
+    // 语言筛选
+    try { this.songLang = localStorage.getItem('bgMusicLang') || 'all'; } catch (e) { this.songLang = 'all'; }
+
     this.ctx = null;
     this.analyser = null;
     this._source = null;
@@ -472,13 +479,66 @@ class BGMusic {
       this.pause();
       return;
     }
-    if (this.playMode === "single") {
-      this.audio.currentTime = 0;
-      if (this.enabled) this._playAudio();
-      return;
+    var self = this;
+    var doNext = function () {
+      self._gapTimer = null;
+      if (self.playMode === "single") {
+        self.audio.currentTime = 0;
+      } else {
+        self._loadTrack(self._pickNext());
+      }
+      if (self.enabled) self._playAudio();
+    };
+    if (this.songGap > 0 && this.playMode !== "single") {
+      if (this._gapTimer) clearTimeout(this._gapTimer);
+      this._gapTimer = setTimeout(doNext, this.songGap * 1000);
+    } else {
+      doNext();
     }
-    this._loadTrack(this._pickNext());
-    if (this.enabled) this._playAudio();
+  }
+
+  setSongGap(sec) {
+    this.songGap = (sec === 3 || sec === 6 || sec === 9) ? sec : 0;
+    try { localStorage.setItem("bgMusicGap", String(this.songGap)); } catch (e) {}
+  }
+
+  cancelGap() {
+    if (this._gapTimer) { clearTimeout(this._gapTimer); this._gapTimer = null; }
+  }
+
+  /* 语言过滤后的下一首 */
+  _pickNextLang() {
+    try {
+      if (window.VinylMenu && this.songLang && this.songLang !== 'all') {
+        var list = window.VinylMenu.langList(this.songLang);
+        if (list && list.length) {
+          if (this.shuffle) {
+            return list[Math.floor(Math.random() * list.length)];
+          }
+          // 顺序：找当前之后的第一个同语言
+          for (var i = 0; i < list.length; i++) {
+            if (list[i] > this.currentNum) return list[i];
+          }
+          return list[0]; // 循环
+        }
+      }
+    } catch (e) {}
+    return this._pickNext();
+  }
+
+  _pickPrevLang() {
+    try {
+      if (window.VinylMenu && this.songLang && this.songLang !== 'all') {
+        var list = window.VinylMenu.langList(this.songLang);
+        if (list && list.length) {
+          for (var i = list.length - 1; i >= 0; i--) {
+            if (list[i] < this.currentNum) return list[i];
+          }
+          return list[list.length - 1];
+        }
+      }
+    } catch (e) {}
+    return this.currentNum <= 1 ? BG_MUSIC_MAX : this.currentNum - 1;
   }
 
   setPlayMode(mode) {
@@ -499,18 +559,16 @@ class BGMusic {
 
   skipNext() {
     this._skipAttempts = 0;
-    this._loadTrack(this._pickNext());
+    this.cancelGap();
+    this._loadTrack(this._pickNextLang());
     if (this.enabled) this._playAudio();
   }
 
   skipPrev() {
     this._skipAttempts = 0;
+    this.cancelGap();
     let prev;
-    if (this.shuffle) {
-      prev = this._pickNext();
-    } else {
-      prev = this.currentNum <= 1 ? BG_MUSIC_MAX : this.currentNum - 1;
-    }
+    prev = this._pickPrevLang();
     this._loadTrack(prev);
     if (this.enabled) this._playAudio();
   }
@@ -574,6 +632,7 @@ class BGMusic {
 
   pause() {
     this._userPaused = true;
+    this.cancelGap();
     this._releaseWakeLock();
     try {
       this.audio.pause();

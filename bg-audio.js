@@ -123,6 +123,9 @@
     if (!relaying) return;
     relaying = false;
     try { bgMusic._advance(); } catch (e) {}
+    // 等歌曲间距走完再同步接力
+    var gapMs = 900;
+    try { gapMs += (bgMusic.songGap || 0) * 1000; } catch (e) {}
     setTimeout(function () {
       try {
         if (document.hidden && wantPlay && bgMusic.enabled) {
@@ -139,7 +142,7 @@
           try { main.pause(); } catch (e) {}
         }
       } catch (e) {}
-    }, 900);
+    }, gapMs);
   }
 
   document.addEventListener('visibilitychange', function () {
