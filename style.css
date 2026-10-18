@@ -513,7 +513,7 @@ body {
   position: relative;
   will-change: transform;
   overflow: hidden;
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transition: box-shadow 0.4s ease; /* 去掉 transform 过渡：JS 每帧写 rotate，加过渡会抖 */
 }
 /* 播放时悬浮起来（挂在wrap上，避免跟JS的rotate inline样式冲突） */
 .ph-vinyl-wrap.playing {

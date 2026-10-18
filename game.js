@@ -274,19 +274,6 @@ class BGMusic {
     }
   }
 
-  _releaseWakeLock() {
-    try {
-      if (this._wakeLock) {
-        const s = this._wakeLock;
-        this._wakeLock = null;
-        const r = s.release();
-        if (r && typeof r.catch === "function") r.catch(() => {});
-      }
-    } catch (e) {
-      this._wakeLock = null;
-    }
-  }
-
   _playAudio() {
     this._resumeCtx();
     try {
@@ -956,14 +943,22 @@ document.addEventListener("visibilitychange", function () {
 
   var ambientEl = document.getElementById("ph-ambient");
   var ambientLvl = 0;
-  function tickVinyl() {
+  var lastVinylT = 0;
+  function tickVinyl(now) {
     if (!vinyl) return;
+    // 按真实时间推进：帧率波动时转速依然均匀
+    if (!lastVinylT) lastVinylT = now || performance.now();
+    var t = now || performance.now();
+    var dt = (t - lastVinylT) / 1000;
+    lastVinylT = t;
+    if (dt <= 0 || dt > 0.25) dt = 0.016;
     var playing = bgMusic.isPlaying();
     var energy = bgMusic.energy || 0;
-    var targetVel = playing ? 3.2 + energy * 1.6 : 0;
-    vinylVel += (targetVel - vinylVel) * (playing ? 0.07 : 0.09);
-    if (Math.abs(vinylVel) < 0.002) vinylVel = 0;
-    vinylAngle = (vinylAngle + vinylVel) % 360;
+    var targetVel = playing ? 3.2 + energy * 1.6 : 0; // 度/帧@60fps
+    var targetDps = targetVel * 60; // 换算成度/秒
+    vinylVel += (targetDps - vinylVel) * (playing ? 0.07 : 0.09);
+    if (Math.abs(vinylVel) < 0.12) vinylVel = 0;
+    vinylAngle = (vinylAngle + vinylVel * dt) % 360;
     vinyl.style.transform = "rotate(" + vinylAngle.toFixed(2) + "deg)";
     if (ambientEl) {
       var target = playing ? 0.35 + energy * 0.65 : 0;
@@ -973,13 +968,13 @@ document.addEventListener("visibilitychange", function () {
     }
   }
 
-  function loop() {
+  function loop(now) {
     if (!phActive) return;
     if (document.hidden) {
       raf = 0;
       return;
     }
-    tickVinyl();
+    tickVinyl(now);
     drawSpectrum();
     syncPlayUi();
     raf = requestAnimationFrame(loop);
