@@ -115,7 +115,7 @@ function evaluateSpinResult(a, b, c, bet, jackpotValue) {
 
 // 曲目：source 仓库 mp3/1.mp3…；改数量时同步 BG_MUSIC_MAX
 const BG_MUSIC_BASE = "https://totp99.github.io/source/mp3/";
-const BG_MUSIC_MAX = 99;
+const BG_MUSIC_MAX = 47;
 
 class BGMusic {
   constructor() {
@@ -165,7 +165,7 @@ class BGMusic {
     this._playing = false;
     this._bandBins = null;
     this._analyserFailed = false;
-    this._userPaused = false; // 用户/系统主动暂停后为 true，回前台不自动重播
+    this._userPaused = true; // 初始视为未播放；真正播放时 _playAudio 置 false，暂停后为 true，回前台不自动重播
 
     this.audio.addEventListener("ended", () => this._advance());
     this.audio.addEventListener("error", () => this._advance());
@@ -304,6 +304,12 @@ class BGMusic {
 
   _playAudio() {
     this._userPaused = false;
+    // 歌曲间距等待中（上一首已播完）：取消等待，直接切到下一首，避免重播旧歌 + 计时器稍后再切
+    if (this._gapTimer) {
+      clearTimeout(this._gapTimer);
+      this._gapTimer = null;
+      if (this.playMode !== "single") this._loadTrack(this._pickNextLang());
+    }
     this._resumeCtx();
     try {
       const p = this.audio.play();
@@ -485,7 +491,7 @@ class BGMusic {
       if (self.playMode === "single") {
         self.audio.currentTime = 0;
       } else {
-        self._loadTrack(self._pickNext());
+        self._loadTrack(self._pickNextLang());
       }
       if (self.enabled) self._playAudio();
     };
@@ -513,7 +519,11 @@ class BGMusic {
         var list = window.VinylMenu.langList(this.songLang);
         if (list && list.length) {
           if (this.shuffle) {
-            return list[Math.floor(Math.random() * list.length)];
+            var pick;
+            do {
+              pick = list[Math.floor(Math.random() * list.length)];
+            } while (list.length > 1 && pick === this.currentNum);
+            return pick;
           }
           // 顺序：找当前之后的第一个同语言
           for (var i = 0; i < list.length; i++) {
