@@ -494,7 +494,12 @@ class BGMusic {
   async play() {
     if (!this.audio) return;
     this.ensureAnalyser();
-    this._resumeCtx();
+    // 等 AudioContext 真正 resume 完成，避免第一次点播放无声
+    if (this.ctx && this.ctx.state === "suspended") {
+      try {
+        await this.ctx.resume();
+      } catch (e) {}
+    }
     if (!this.enabled) {
       this.enabled = true;
       localStorage.setItem("bgMusicEnabled", "true");
@@ -508,7 +513,11 @@ class BGMusic {
   async tryPlay() {
     if (!this.enabled) return;
     this.ensureAnalyser();
-    this._resumeCtx();
+    if (this.ctx && this.ctx.state === "suspended") {
+      try {
+        await this.ctx.resume();
+      } catch (e) {}
+    }
     this._resetGainToOne();
     this._playAudio();
     this._requestWakeLock();
