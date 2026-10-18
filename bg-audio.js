@@ -24,6 +24,16 @@
     a.preload = 'auto';
     a.muted = true; // 前台全程静音并行
     a.addEventListener('ended', onRelayEnded);
+    // 锁屏控制条暂停接力（iOS 直接操作 audio 元素）：同步用户意图
+    a.addEventListener('pause', function () {
+      try {
+        if (relaying && document.hidden) {
+          relaying = false;
+          wantPlay = false;
+          try { localStorage.setItem("bgMusicWasPlaying", "0"); } catch (e) {}
+        }
+      } catch (e) {}
+    });
     relayAudio = a;
     return a;
   }
@@ -50,7 +60,7 @@
             relayAudio.currentTime = main.currentTime || 0;
           }
           // 主在播而接力停了（被系统掐了），补拉起来
-          if (!main.paused && relayAudio.paused && relayAudio.src) {
+          if (wantPlay && bgMusic.enabled && !main.paused && relayAudio.paused && relayAudio.src) {
             var p2 = relayAudio.play();
             if (p2 && p2.catch) p2.catch(function () {});
           }
@@ -62,6 +72,7 @@
   /* 用户手势内：启动静音并行 */
   function startParallel() {
     try {
+      if (!wantPlay || !bgMusic.enabled) return; // 已暂停则不启动
       var main = bgMusic.audio;
       if (!main || !main.src) return;
       var a = ensureRelayAudio();

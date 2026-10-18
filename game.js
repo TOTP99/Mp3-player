@@ -164,6 +164,15 @@ class BGMusic {
     this.audio.addEventListener("playing", () => {
       this._skipAttempts = 0;
     });
+    // 节流存进度（5秒一次）
+    var lastSave = 0;
+    this.audio.addEventListener("timeupdate", () => {
+      var now = Date.now();
+      if (now - lastSave > 5000) {
+        lastSave = now;
+        this._savePos();
+      }
+    });
 
     this._loadTrack(this.currentNum);
     this._setupMediaSession();
@@ -269,6 +278,17 @@ class BGMusic {
       sentinel.addEventListener("release", () => {
         this._wakeLock = null;
       });
+    } catch (e) {
+      this._wakeLock = null;
+    }
+  }
+
+  _releaseWakeLock() {
+    try {
+      if (this._wakeLock) {
+        this._wakeLock.release().catch(function () {});
+        this._wakeLock = null;
+      }
     } catch (e) {
       this._wakeLock = null;
     }
@@ -386,12 +406,27 @@ class BGMusic {
     } catch (e) {}
     this.audio.src = new URL(`${num}.mp3`, BG_MUSIC_BASE).href;
     this.audio.loop = this.playMode === "single";
+    // 恢复本曲上次进度
+    try {
+      var savedPos = parseFloat(localStorage.getItem("bgMusicPos_" + num) || "0");
+      if (savedPos > 1) {
+        this.audio.currentTime = savedPos;
+      }
+    } catch (e) {}
     if (this._enhancer && typeof this._enhancer.resetAgc === "function") {
       try {
         this._enhancer.resetAgc();
       } catch (e) {}
     }
     this._notifyTrackChange();
+  }
+
+  _savePos() {
+    try {
+      if (this.audio && this.audio.src && this.currentNum) {
+        localStorage.setItem("bgMusicPos_" + this.currentNum, String(this.audio.currentTime || 0));
+      }
+    } catch (e) {}
   }
 
   onTrackChange(cb) {
@@ -507,6 +542,7 @@ class BGMusic {
     this._resetGainToOne();
     this._playAudio();
     this._requestWakeLock();
+    try { localStorage.setItem("bgMusicWasPlaying", "1"); } catch (e) {}
   }
 
   /** 用户手势内尝试播放（受 enabled 控制） */
@@ -539,6 +575,8 @@ class BGMusic {
     try {
       this.audio.pause();
     } catch (e) {}
+    this._savePos();
+    try { localStorage.setItem("bgMusicWasPlaying", "0"); } catch (e) {}
     if (this._gain && this.ctx && this.ctx.state === "running") {
       this._fadeGainTo(0, 0.03);
       const gain = this._gain;
@@ -566,7 +604,18 @@ const bgMusic = new BGMusic();
 
 function unlockAudioOnce() {
   try {
-    bgMusic.tryPlay();
+    // 只解锁 AudioContext，不自动播放（避免"刚起又暂停"）
+    bgMusic.ensureAnalyser();
+    if (bgMusic.ctx && bgMusic.ctx.state === "suspended") {
+      bgMusic.ctx.resume().catch(function () {});
+    }
+    // 上次退出时在播，下次手势恢复
+    try {
+      if (localStorage.getItem("bgMusicWasPlaying") === "1") {
+        localStorage.setItem("bgMusicWasPlaying", "0");
+        bgMusic.tryPlay();
+      }
+    } catch (e) {}
   } catch (e) {}
   document.removeEventListener("touchstart", unlockAudioOnce, true);
   document.removeEventListener("mousedown", unlockAudioOnce, true);
@@ -583,6 +632,8 @@ document.addEventListener("visibilitychange", function () {
     try {
       if (bgMusic.isPlaying()) bgMusic._requestWakeLock();
     } catch (e) {}
+  } else {
+    try { bgMusic._savePos(); } catch (e) {}
   }
 });
 
