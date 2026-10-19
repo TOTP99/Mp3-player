@@ -501,13 +501,15 @@ body {
     );
   border: 2px solid var(--gold);
   box-shadow:
-    0 0 0 1px #5c4010,
+    0 0 0 2px #5c4010,
+    0 0 0 1px #fff3c4,
     0 1px 0 0 #2a2a2a,
     0 2px 0 0 #1a1a1a,
     0 3px 0 0 #0d0d0d,
     0 4px 0 0 #050302,
     0 8px 18px rgba(0, 0, 0, 0.6),
     0 0 14px rgba(255, 215, 0, 0.12),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.45),
     inset 0 0 36px rgba(0, 0, 0, 0.85),
     inset 0 2px 6px rgba(255, 255, 255, 0.06);
   position: relative;
@@ -521,13 +523,15 @@ body {
 }
 .ph-vinyl-wrap.playing .ph-vinyl {
   box-shadow:
-    0 0 0 1px #5c4010,
+    0 0 0 2px #5c4010,
+    0 0 0 1px #fff3c4,
     0 1px 0 0 #2a2a2a,
     0 2px 0 0 #1a1a1a,
     0 3px 0 0 #0d0d0d,
     0 4px 0 0 #050302,
     0 14px 28px rgba(0, 0, 0, 0.65),
     0 0 22px rgba(255, 215, 0, 0.22),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.45),
     inset 0 0 36px rgba(0, 0, 0, 0.85),
     inset 0 2px 6px rgba(255, 255, 255, 0.06);
 }
@@ -572,11 +576,13 @@ body {
 }
 .ph-vinyl.playing {
   box-shadow:
-    0 0 0 1px #5c4010,
+    0 0 0 2px #5c4010,
+    0 0 0 1px #fff3c4,
     0 5px 0 -1px #050302,
     0 9px 16px rgba(0, 0, 0, 0.55),
     0 0 14px rgba(255, 215, 0, 0.22),
     0 0 24px rgba(255, 140, 66, 0.08),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.45),
     inset 0 0 36px rgba(0, 0, 0, 0.85);
 }
 .ph-vinyl-sheen {
@@ -691,7 +697,8 @@ body {
   width: 72%;
   height: 3.5px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #fff8d0 0%, #ffe566 25%, #c9a227 55%, #8a7040 100%);
+  /* 沿杆身的金属渐变：轴端亮 → 针端暗，更有金属杆质感 */
+  background: linear-gradient(90deg, #8a7040 0%, #c9a227 35%, #ffe566 60%, #fff8d0 78%, #c9a227 100%);
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.5),
     inset 0 1px 1px rgba(255,255,255,.6);
@@ -716,7 +723,10 @@ body {
   border-radius: 2px;
   background: linear-gradient(180deg, #ddd, #888 60%, #444);
   border: 1px solid var(--gold);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.45);
+  /* 落地接触阴影：紧贴碟面，不再发飘 */
+  box-shadow:
+    0 3px 5px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.5);
 }
 .ph-arm.up { transform: rotate(-38deg); }
 .ph-arm.down { transform: rotate(12deg); animation: ph-needle-drop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -729,7 +739,8 @@ body {
 .ph-arm.down .ph-arm-head {
   box-shadow:
     0 0 4px rgba(255, 215, 0, 0.22),
-    0 2px 4px rgba(0, 0, 0, 0.45);
+    0 3px 5px rgba(0, 0, 0, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .ph-mini {
