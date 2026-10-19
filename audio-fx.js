@@ -77,7 +77,8 @@
       setColor(el, "gray");
       return;
     }
-    if (isUnlocked() || unlockedOnce) {
+    // #6：按实时状态着色，不锁死绿；iOS 打断后回橙，不误导
+    if (isUnlocked()) {
       setColor(el, "green");
     } else {
       setColor(el, "orange");
@@ -91,7 +92,7 @@
       var wasPlaying = false;
       try { wasPlaying = bgMusic.isPlaying(); } catch (e) {}
       bgMusic.ensureAnalyser();
-      if (bgMusic.ctx && bgMusic.ctx.state === "suspended") {
+      if (bgMusic.ctx && bgMusic.ctx.state !== "running") {
         await bgMusic.ctx.resume();
       }
       // 静音 priming：仅在没在播时做（部分机型需要一次真实 play→pause 才放行）

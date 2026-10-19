@@ -2,6 +2,7 @@
  *
  * 语言映射 SONG_LANG：曲号 -> 'zh'|'en'|'ja'|'other'
  * 无标签的暂归 'other'，听到后按曲号改这里即可。
+ * 曲目上限跟随 BG_MUSIC_MAX（game.js），不写死。
  */
 (function () {
   'use strict';
@@ -25,6 +26,17 @@
     ['other', '其他']
   ];
   var LANG_NAME = { all: '全部', zh: '中文', en: '英文', ja: '日语', other: '其他' };
+  var GAPS = [[0, '关'], [3, '3s'], [6, '6s'], [9, '9s']];
+
+  function musicMax() {
+    try {
+      if (typeof BG_MUSIC_MAX === 'number' && BG_MUSIC_MAX > 0) return BG_MUSIC_MAX;
+    } catch (e) {}
+    try {
+      if (typeof bgMusic !== 'undefined' && bgMusic.songLangMax) return bgMusic.songLangMax;
+    } catch (e2) {}
+    return 99;
+  }
 
   function songLang(num) {
     return SONG_LANG[num] || 'other';
@@ -34,8 +46,7 @@
   function langList(lang) {
     if (!lang || lang === 'all') return null;
     var out = [];
-    var max = 47; // 实际曲目数
-    try { if (typeof bgMusic !== "undefined" && bgMusic.songLangMax) max = bgMusic.songLangMax; } catch (e) {}
+    var max = musicMax();
     for (var i = 1; i <= max; i++) {
       if (songLang(i) === lang) out.push(i);
     }
@@ -49,28 +60,53 @@
     try { localStorage.setItem('bgMusicLang', l); } catch (e) {}
     try { if (typeof bgMusic !== "undefined") bgMusic.songLang = l; } catch (e) {}
   }
+  function getGap() {
+    try { return typeof bgMusic !== "undefined" ? (bgMusic.songGap || 0) : 0; } catch (e) { return 0; }
+  }
 
   function closeMenu() {
     var ov = document.getElementById('ph-vinyl-menu-ov');
     if (ov) ov.remove();
   }
 
-  function rowBtn(label, active, onclick) {
-    var b = document.createElement('button');
-    b.textContent = label + (active ? ' ✓' : '');
-    b.style.cssText = 'display:block;width:100%;margin:7px 0;padding:10px 0;font-size:15px;' +
-      'letter-spacing:2px;color:' + (active ? '#1a1410' : '#e8c56a') + ';' +
-      'background:' + (active ? '#e8c56a' : 'transparent') + ';' +
-      'border:1px solid #8a6d3b;border-radius:8px;cursor:pointer;';
-    b.addEventListener('click', function (e) { e.stopPropagation(); onclick(); });
-    return b;
+  /* 横排选项组：只更新选中态，不重建菜单（#4） */
+  function optGroup(opts, curVal, onPick) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 2px;';
+    var btns = [];
+    opts.forEach(function (opt) {
+      var b = document.createElement('button');
+      b.textContent = opt[1];
+      b.dataset.val = String(opt[0]);
+      b.style.cssText = 'flex:1 1 0;min-width:52px;padding:9px 0;font-size:14px;' +
+        'letter-spacing:1px;border:1px solid #8a6d3b;border-radius:8px;cursor:pointer;' +
+        '-webkit-tap-highlight-color:transparent;';
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        onPick(opt[0]);
+        paint();
+      });
+      wrap.appendChild(b);
+      btns.push(b);
+    });
+    function paint() {
+      var cur = curVal();
+      btns.forEach(function (b) {
+        var on = b.dataset.val === String(cur);
+        b.style.color = on ? '#1a1410' : '#e8c56a';
+        b.style.background = on ? '#e8c56a' : 'transparent';
+      });
+    }
+    paint();
+    wrap._repaint = paint;
+    return wrap;
   }
 
   function sectionTitle(t) {
     var d = document.createElement('div');
     d.textContent = t;
-    d.style.cssText = 'color:#e8c56a;font-size:14px;letter-spacing:4px;margin:12px 0 4px;' +
-      'border-bottom:1px solid rgba(138,109,59,.4);padding-bottom:6px;text-align:left;';
+    d.style.cssText = 'color:#e8c56a;font-size:13px;letter-spacing:4px;margin:10px 0 2px;' +
+      'border-bottom:1px solid rgba(138,109,59,.4);padding-bottom:5px;text-align:left;';
     return d;
   }
 
@@ -79,38 +115,43 @@
     var ov = document.createElement('div');
     ov.id = 'ph-vinyl-menu-ov';
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;' +
-      'display:flex;align-items:center;justify-content:center;';
+      'display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;';
     var box = document.createElement('div');
-    box.style.cssText = 'background:#1a1410;border:1px solid #8a6d3b;border-radius:12px;' +
-      'padding:18px 22px;min-width:250px;max-height:80vh;overflow-y:auto;' +
-      'box-shadow:0 8px 30px rgba(0,0,0,.6);';
+    /* #4：小屏适配——限高 + 内部滚动，横竖屏都放得下 */
+    box.style.cssText = 'position:relative;background:#1a1410;border:1px solid #8a6d3b;border-radius:12px;' +
+      'padding:14px 16px 16px;width:280px;max-width:92vw;' +
+      'max-height:min(78vh,420px);overflow-y:auto;-webkit-overflow-scrolling:touch;' +
+      'box-shadow:0 8px 30px rgba(0,0,0,.6);box-sizing:border-box;';
+
+    /* × 关闭按钮 */
+    var x = document.createElement('button');
+    x.textContent = '×';
+    x.setAttribute('aria-label', '关闭');
+    x.style.cssText = 'position:absolute;top:6px;right:10px;width:30px;height:30px;' +
+      'font-size:20px;line-height:1;color:#e8c56a;background:transparent;border:none;cursor:pointer;' +
+      '-webkit-tap-highlight-color:transparent;';
+    x.addEventListener('click', function (e) { e.stopPropagation(); closeMenu(); });
+    box.appendChild(x);
+
     var title = document.createElement('div');
     title.textContent = '唱片设置';
-    title.style.cssText = 'color:#e8c56a;font-size:16px;letter-spacing:4px;margin-bottom:6px;text-align:center;';
+    title.style.cssText = 'color:#e8c56a;font-size:15px;letter-spacing:4px;margin-bottom:2px;text-align:center;padding-right:24px;';
     box.appendChild(title);
 
-    // 1. 歌曲间距
+    // 1. 歌曲间距（横排）
     box.appendChild(sectionTitle('歌曲间距'));
-    var curGap = 0;
-    try { curGap = typeof bgMusic !== "undefined" ? (bgMusic.songGap || 0) : 0; } catch (e) {}
-    [[0, '关闭'], [3, '3 秒'], [6, '6 秒'], [9, '9 秒']].forEach(function (opt) {
-      box.appendChild(rowBtn(opt[1], opt[0] === curGap, function () {
-        try { bgMusic.setSongGap(opt[0]); } catch (e) {}
-        showMenu(); // 刷新高亮
-      }));
-    });
+    box.appendChild(optGroup(GAPS, getGap, function (v) {
+      try { bgMusic.setSongGap(v); } catch (e) {}
+    }));
 
-    // 2. 语言筛选
+    // 2. 语言筛选（横排，带数量）
     box.appendChild(sectionTitle('语言筛选'));
-    var curLang = getLang();
-    LANGS.forEach(function (l) {
+    var langOpts = LANGS.map(function (l) {
       var list = langList(l[0]);
-      var suffix = l[0] === 'all' ? '' : ' (' + (list ? list.length : 0) + ')';
-      box.appendChild(rowBtn(l[1] + suffix, l[0] === curLang, function () {
-        setLang(l[0]);
-        showMenu();
-      }));
+      var suffix = l[0] === 'all' ? '' : (list ? list.length : 0);
+      return [l[0], suffix === '' ? l[1] : l[1] + suffix];
     });
+    box.appendChild(optGroup(langOpts, getLang, function (v) { setLang(v); }));
 
     ov.appendChild(box);
     ov.addEventListener('click', function (e) { if (e.target === ov) closeMenu(); });

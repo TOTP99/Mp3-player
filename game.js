@@ -113,9 +113,9 @@ function evaluateSpinResult(a, b, c, bet, jackpotValue) {
   return { type: "none", win: 0, symbol: null };
 }
 
-// 曲目：source 仓库 mp3/1.mp3…；改数量时同步 BG_MUSIC_MAX
+// 曲目：source 仓库 mp3/1.mp3…；改数量时同步 BG_MUSIC_MAX（vinyl-menu.js 自动跟随）
 const BG_MUSIC_BASE = "https://totp99.github.io/source/mp3/";
-const BG_MUSIC_MAX = 47;
+const BG_MUSIC_MAX = 99;
 
 class BGMusic {
   constructor() {
@@ -128,11 +128,18 @@ class BGMusic {
     this.audio.crossOrigin = "anonymous"; // 跨域 + MediaElementSource 必需
     this.audio.volume = 0.8;
 
-    const savedEnabled = localStorage.getItem("bgMusicEnabled");
+    // 存储禁用时整页不能起不来：全部 try/catch（#9）
+    var savedEnabled = null, savedMode = null, savedShuffleLegacy = false;
+    var savedNum = 1, savedGap = 0;
+    try {
+      savedEnabled = localStorage.getItem("bgMusicEnabled");
+      savedMode = localStorage.getItem("bgMusicPlayMode");
+      savedShuffleLegacy = localStorage.getItem("bgMusicShuffle") === "true";
+      savedNum = parseInt(localStorage.getItem("bgMusicCurrentNum") || "1", 10);
+      savedGap = parseInt(localStorage.getItem("bgMusicGap") || "0", 10);
+    } catch (e) {}
     this.enabled = savedEnabled === null ? true : savedEnabled === "true";
 
-    const savedMode = localStorage.getItem("bgMusicPlayMode");
-    const savedShuffleLegacy = localStorage.getItem("bgMusicShuffle") === "true";
     let mode = savedMode || (savedShuffleLegacy ? "shuffle" : "order");
     if (mode !== "order" && mode !== "shuffle" && mode !== "single" && mode !== "all") {
       mode = "order";
@@ -140,14 +147,12 @@ class BGMusic {
     this.playMode = mode;
     this.shuffle = this.playMode === "shuffle";
 
-    const savedNum = parseInt(localStorage.getItem("bgMusicCurrentNum") || "1", 10);
     this.currentNum =
       Number.isFinite(savedNum) && savedNum >= 1 && savedNum <= BG_MUSIC_MAX
         ? savedNum
         : 1;
 
     // 歌曲间距（秒）：0=无，长按唱片设置
-    var savedGap = parseInt(localStorage.getItem("bgMusicGap") || "0", 10);
     this.songGap = (savedGap === 3 || savedGap === 6 || savedGap === 9) ? savedGap : 0;
     this._gapTimer = null;
     // 语言筛选
@@ -166,11 +171,17 @@ class BGMusic {
     this._bandBins = null;
     this._analyserFailed = false;
     this._userPaused = true; // 初始视为未播放；真正播放时 _playAudio 置 false，暂停后为 true，回前台不自动重播
+    this._missing = new Set(); // 404/确认失败的曲号，选曲时跳过
+    this._errorRetry = false;
+    this._wantPlay = false; // 是否期望在播（供 interrupted 自动恢复）
 
     this.audio.addEventListener("ended", () => this._advance());
-    this.audio.addEventListener("error", () => this._advance());
+    // error：先 1.5s 后重试一次（网络瞬断），再失败才标记缺失跳过（#小问题）
+    this.audio.addEventListener("error", () => this._onTrackError());
     this.audio.addEventListener("playing", () => {
       this._skipAttempts = 0;
+      this._errorRetry = false;
+      this._consecutiveErrors = 0;
     });
     // 节流存进度（5秒一次）
     var lastSave = 0;
@@ -234,6 +245,7 @@ class BGMusic {
         return false;
       }
       if (!this.ctx) this.ctx = new AC();
+      this._watchCtxState();
       this._resumeCtx();
       if (!this.analyser) {
         this.analyser = this.ctx.createAnalyser();
@@ -271,10 +283,29 @@ class BGMusic {
   }
 
   _resumeCtx() {
-    if (this.ctx && this.ctx.state === "suspended") {
+    // iOS 来电/Siri/闹钟后是 "interrupted" 而非 "suspended"，一律按非 running 处理（#6）
+    if (this.ctx && this.ctx.state !== "running") {
       const r = this.ctx.resume();
       if (r && typeof r.catch === "function") r.catch(() => {});
     }
+  }
+
+  _watchCtxState() {
+    // iOS 打断后自动 resume（#6）
+    if (!this.ctx || this._ctxWatched) return;
+    this._ctxWatched = true;
+    try {
+      this.ctx.onstatechange = () => {
+        if (
+          this.ctx.state !== "running" &&
+          this._wantPlay &&
+          !this._userPaused &&
+          this.enabled
+        ) {
+          this._resumeCtx();
+        }
+      };
+    } catch (e) {}
   }
 
   async _requestWakeLock() {
@@ -304,6 +335,8 @@ class BGMusic {
 
   _playAudio() {
     this._userPaused = false;
+    this._wantPlay = true;
+    this._pauseToken = (this._pauseToken || 0) + 1; // 作废未执行的 pause 延迟
     // 歌曲间距等待中（上一首已播完）：取消等待，直接切到下一首，避免重播旧歌 + 计时器稍后再切
     if (this._gapTimer) {
       clearTimeout(this._gapTimer);
@@ -416,6 +449,7 @@ class BGMusic {
 
   _loadTrack(num) {
     this.currentNum = num;
+    this._errorRetry = false; // 换曲作废旧的重试计时
     try {
       localStorage.setItem("bgMusicCurrentNum", String(num));
     } catch (e) {}
@@ -459,32 +493,67 @@ class BGMusic {
     }
   }
 
-  // order 播完停；all 循环；shuffle 随机；single 单曲
+  // order/all 顺序循环；shuffle 随机；single 单曲
   _pickNext() {
     if (this.playMode === "single") {
       return this.currentNum;
     }
     if (this.playMode === "shuffle") {
       if (BG_MUSIC_MAX <= 1) return 1;
-      let next;
+      let next, guard = 0;
       do {
         next = 1 + Math.floor(Math.random() * BG_MUSIC_MAX);
-      } while (next === this.currentNum);
+        guard++;
+      } while ((next === this.currentNum || this._missing.has(next)) && guard < BG_MUSIC_MAX * 2);
       return next;
     }
-    return this.currentNum >= BG_MUSIC_MAX ? 1 : this.currentNum + 1;
+    let next = this.currentNum >= BG_MUSIC_MAX ? 1 : this.currentNum + 1;
+    let guard = 0;
+    while (this._missing.has(next) && guard++ < BG_MUSIC_MAX) {
+      next = next >= BG_MUSIC_MAX ? 1 : next + 1;
+    }
+    return next;
+  }
+
+  _onTrackError() {
+    this._consecutiveErrors = (this._consecutiveErrors || 0) + 1;
+    // 连续 3 次以上错误：判定为批量缺失（如 48-99 未上传），直接跳过不再等 1.5s
+    if (this._consecutiveErrors >= 3) {
+      this._errorRetry = false;
+      this._missing.add(this.currentNum);
+      this._advance();
+      return;
+    }
+    // 第一次：1.5s 后重试一次（网络瞬断），再失败才标记缺失跳过
+    if (!this._errorRetry) {
+      this._errorRetry = true;
+      const num = this.currentNum;
+      setTimeout(() => {
+        if (!this._errorRetry || this.currentNum !== num) return;
+        this._errorRetry = false;
+        try {
+          this.audio.load();
+          if (this._wantPlay && this.enabled) this._playAudio();
+        } catch (e) {
+          this._missing.add(num);
+          this._advance();
+        }
+      }, 1500);
+      return;
+    }
+    this._errorRetry = false;
+    this._missing.add(this.currentNum);
+    this._advance();
   }
 
   _advance() {
+    // #1：播完清掉本曲进度，下次从头放
+    try { localStorage.removeItem("bgMusicPos_" + this.currentNum); } catch (e) {}
     this._skipAttempts += 1;
     if (this._skipAttempts > BG_MUSIC_MAX) {
       return;
     }
-    if (this.playMode === "order" && this.currentNum >= BG_MUSIC_MAX) {
-      this._loadTrack(1);
-      this.pause();
-      return;
-    }
+    // #7：顺序模式也循环（与循环图标、语言筛选行为一致）
     var self = this;
     var doNext = function () {
       self._gapTimer = null;
@@ -518,18 +587,22 @@ class BGMusic {
       if (window.VinylMenu && this.songLang && this.songLang !== 'all') {
         var list = window.VinylMenu.langList(this.songLang);
         if (list && list.length) {
+          var self = this;
+          var avail = list.filter(function (n) { return !self._missing.has(n); });
+          if (!avail.length) avail = list;
           if (this.shuffle) {
-            var pick;
+            var pick, guard = 0;
             do {
-              pick = list[Math.floor(Math.random() * list.length)];
-            } while (list.length > 1 && pick === this.currentNum);
+              pick = avail[Math.floor(Math.random() * avail.length)];
+              guard++;
+            } while (avail.length > 1 && pick === this.currentNum && guard < 20);
             return pick;
           }
           // 顺序：找当前之后的第一个同语言
-          for (var i = 0; i < list.length; i++) {
-            if (list[i] > this.currentNum) return list[i];
+          for (var i = 0; i < avail.length; i++) {
+            if (avail[i] > this.currentNum) return avail[i];
           }
-          return list[0]; // 循环
+          return avail[0]; // 循环
         }
       }
     } catch (e) {}
@@ -541,14 +614,22 @@ class BGMusic {
       if (window.VinylMenu && this.songLang && this.songLang !== 'all') {
         var list = window.VinylMenu.langList(this.songLang);
         if (list && list.length) {
-          for (var i = list.length - 1; i >= 0; i--) {
-            if (list[i] < this.currentNum) return list[i];
+          var self = this;
+          var avail = list.filter(function (n) { return !self._missing.has(n); });
+          if (!avail.length) avail = list;
+          for (var i = avail.length - 1; i >= 0; i--) {
+            if (avail[i] < this.currentNum) return avail[i];
           }
-          return list[list.length - 1];
+          return avail[avail.length - 1];
         }
       }
     } catch (e) {}
-    return this.currentNum <= 1 ? BG_MUSIC_MAX : this.currentNum - 1;
+    var prev = this.currentNum <= 1 ? BG_MUSIC_MAX : this.currentNum - 1;
+    var guard = 0;
+    while (this._missing.has(prev) && guard++ < BG_MUSIC_MAX) {
+      prev = prev <= 1 ? BG_MUSIC_MAX : prev - 1;
+    }
+    return prev;
   }
 
   setPlayMode(mode) {
@@ -563,8 +644,10 @@ class BGMusic {
     this.playMode = mode;
     this.shuffle = mode === "shuffle";
     this.audio.loop = mode === "single";
-    localStorage.setItem("bgMusicPlayMode", mode);
-    localStorage.setItem("bgMusicShuffle", String(this.shuffle));
+    try {
+      localStorage.setItem("bgMusicPlayMode", mode);
+      localStorage.setItem("bgMusicShuffle", String(this.shuffle));
+    } catch (e) {}
   }
 
   skipNext() {
@@ -600,14 +683,14 @@ class BGMusic {
     if (!this.audio) return;
     this.ensureAnalyser();
     // 等 AudioContext 真正 resume 完成，避免第一次点播放无声
-    if (this.ctx && this.ctx.state === "suspended") {
+    if (this.ctx && this.ctx.state !== "running") {
       try {
         await this.ctx.resume();
       } catch (e) {}
     }
     if (!this.enabled) {
       this.enabled = true;
-      localStorage.setItem("bgMusicEnabled", "true");
+      try { localStorage.setItem("bgMusicEnabled", "true"); } catch (e) {}
     }
     this._resetGainToOne();
     this._playAudio();
@@ -619,7 +702,7 @@ class BGMusic {
   async tryPlay() {
     if (!this.enabled) return;
     this.ensureAnalyser();
-    if (this.ctx && this.ctx.state === "suspended") {
+    if (this.ctx && this.ctx.state !== "running") {
       try {
         await this.ctx.resume();
       } catch (e) {}
@@ -642,28 +725,37 @@ class BGMusic {
 
   pause() {
     this._userPaused = true;
+    this._wantPlay = false;
     this.cancelGap();
     this._releaseWakeLock();
-    try {
-      this.audio.pause();
-    } catch (e) {}
+    // 先淡出再暂停，避免硬切爆音（#小问题）
+    const doPause = () => {
+      try { this.audio.pause(); } catch (e) {}
+    };
+    // 每次 pause/play 递增 token，防止 pause 后 70ms 内又 play 被旧 timer 误停
+    this._pauseToken = (this._pauseToken || 0) + 1;
+    const token = this._pauseToken;
+    if (this._gain && this.ctx && this.ctx.state === "running") {
+      this._fadeGainTo(0, 0.05);
+      const gain = this._gain, ctx = this.ctx;
+      setTimeout(() => {
+        if (token !== this._pauseToken) return;
+        doPause();
+        try {
+          gain.gain.cancelScheduledValues(ctx.currentTime);
+          gain.gain.setValueAtTime(1, ctx.currentTime);
+        } catch (e) {}
+      }, 70);
+    } else {
+      doPause();
+    }
     this._savePos();
     try { localStorage.setItem("bgMusicWasPlaying", "0"); } catch (e) {}
-    if (this._gain && this.ctx && this.ctx.state === "running") {
-      this._fadeGainTo(0, 0.03);
-      const gain = this._gain;
-      setTimeout(() => {
-        try {
-          gain.gain.cancelScheduledValues(this.ctx.currentTime);
-          gain.gain.setValueAtTime(1, this.ctx.currentTime);
-        } catch (e) {}
-      }, 50);
-    }
   }
 
   setEnabled(enabled) {
     this.enabled = enabled;
-    localStorage.setItem("bgMusicEnabled", String(enabled));
+    try { localStorage.setItem("bgMusicEnabled", String(enabled)); } catch (e) {}
     if (enabled) {
       this.tryPlay();
     } else {
@@ -674,21 +766,31 @@ class BGMusic {
 
 const bgMusic = new BGMusic();
 
-function unlockAudioOnce() {
+function unlockAudioOnce(e) {
   try {
     // 只解锁 AudioContext，不自动播放（避免"刚起又暂停"）
     bgMusic.ensureAnalyser();
-    if (bgMusic.ctx && bgMusic.ctx.state === "suspended") {
+    if (bgMusic.ctx && bgMusic.ctx.state !== "running") {
       bgMusic.ctx.resume().catch(function () {});
     }
-    // 上次退出时在播，下次手势恢复
-    try {
-      if (localStorage.getItem("bgMusicWasPlaying") === "1") {
-        localStorage.setItem("bgMusicWasPlaying", "0");
-        bgMusic.tryPlay();
-      }
-    } catch (e) {}
-  } catch (e) {}
+    // #2：手势落在播放/上一首/下一首键上时，不在这里 tryPlay，
+    // 让 click 处理器自己决定播还是停，否则"第一下点播放变暂停"
+    var t = e && e.target;
+    var onControl = !!(
+      t &&
+      t.closest &&
+      t.closest("#ph-playpause,#ph-prev,#ph-next")
+    );
+    if (!onControl) {
+      // 上次退出时在播，下次手势恢复
+      try {
+        if (localStorage.getItem("bgMusicWasPlaying") === "1") {
+          localStorage.setItem("bgMusicWasPlaying", "0");
+          bgMusic.tryPlay();
+        }
+      } catch (err) {}
+    }
+  } catch (e2) {}
   document.removeEventListener("touchstart", unlockAudioOnce, true);
   document.removeEventListener("mousedown", unlockAudioOnce, true);
   document.removeEventListener("keydown", unlockAudioOnce, true);
@@ -763,11 +865,15 @@ document.addEventListener("visibilitychange", function () {
     }
   }
 
+  var _lastTrackText = "";
   function syncTrack() {
+    // #3：值变了才写 DOM，空闲时不再每秒 60 次重写
+    var txt = "第 " + pad2(bgMusic.currentNum) + " 首 · TP音乐";
+    if (txt === _lastTrackText) return;
+    _lastTrackText = txt;
     var trackTitle = document.getElementById("ph-track-title");
     if (trackTitle) {
-      trackTitle.textContent =
-        "第 " + pad2(bgMusic.currentNum) + " 首 · TP音乐";
+      trackTitle.textContent = txt;
     }
   }
 
@@ -821,8 +927,16 @@ document.addEventListener("visibilitychange", function () {
     if (betEl) betEl.textContent = "注$" + Number(bet).toFixed(0);
   }
 
+  var _msgTimer = null;
   function setMsg(t) {
     if (msgEl) msgEl.textContent = t;
+    // 只有"余额不足"这类提示 2.5 秒后自动消失，中奖信息保持显示
+    if (_msgTimer) { clearTimeout(_msgTimer); _msgTimer = null; }
+    if (t === "余额不足" && msgEl) {
+      _msgTimer = setTimeout(function () {
+        if (msgEl && msgEl.textContent === "余额不足") msgEl.textContent = "";
+      }, 2500);
+    }
   }
 
   // 三条飘带配色：低音粉橙 / 中音金青 / 高音蓝紫
@@ -1254,16 +1368,27 @@ document.addEventListener("visibilitychange", function () {
     }
     miniSpinning = true;
     spinBtn.disabled = true;
+    // #5：结果点击时已确定，扣款+奖金一次写入；动画只负责显示。
+    // 避免动画 0.9s 内刷新/关页丢奖金，也避免结束时旧余额覆盖存档。
     bal -= bet;
     jackpotValue += Math.max(1, Math.round(bet * 0.05));
-    writeSave(bal, bet, jackpotValue);
-    syncWallet();
-    setMsg("");
 
     var finalResult = rollSpinResult();
     var a = finalResult[0];
     var b = finalResult[1];
     var c = finalResult[2];
+    var evalResult = evaluateSpinResult(a, b, c, bet, jackpotValue);
+    var win = evalResult.win;
+    if (evalResult.type === "jackpot") {
+      jackpotValue =
+        Math.round(DEFAULT_BASE_JACKPOT * (bet / 50)) +
+        250 +
+        Math.round(Math.random() * 1000);
+    }
+    bal += win;
+    writeSave(bal, bet, jackpotValue);
+    syncWallet();
+    setMsg("");
 
     var ticks = 0;
     var timer = setInterval(function () {
@@ -1277,9 +1402,6 @@ document.addEventListener("visibilitychange", function () {
         setReel(reelEls[1], b);
         setReel(reelEls[2], c);
 
-        var evalResult = evaluateSpinResult(a, b, c, bet, jackpotValue);
-        var win = evalResult.win;
-
         if (evalResult.type === "jackpot") {
           setMsg("JACKPOT +" + win);
         } else if (evalResult.type === "three") {
@@ -1290,16 +1412,7 @@ document.addEventListener("visibilitychange", function () {
           setMsg("");
         }
 
-        if (win > 0) {
-          bal += win;
-          if (evalResult.type === "jackpot") {
-            jackpotValue =
-              Math.round(DEFAULT_BASE_JACKPOT * (bet / 50)) +
-              250 +
-              Math.round(Math.random() * 1000);
-          }
-        }
-        writeSave(bal, bet, jackpotValue);
+        // 余额已在点击时写入，这里只刷新显示，不再写档
         syncWallet();
         miniSpinning = false;
         spinBtn.disabled = false;
