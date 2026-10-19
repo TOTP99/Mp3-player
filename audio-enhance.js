@@ -1,7 +1,11 @@
 /**
  * audio-enhance.js — 听感增强（高通/低通、presence/air、压缩、AGC、限幅）
  * 由 BGMusic.ensureAnalyser 接入；频谱 analyser 不经本模块。
- * 调参见 DEFAULTS；enh.setEnabled(false) / setWet(0) 可旁路。
+ *
+ * 干/湿双路并联：
+ *   湿路 = 滤波 + presence/air + 压缩 + AGC + 限幅
+ *   干路 = 原声直通
+ * setEnabled(false) / setWet(0) 切换到干路，真正旁路全部处理（30ms 渐变）。
  */
 (function (global) {
   "use strict";
@@ -65,14 +69,14 @@
     compressor.attack.value = cfg.compAttack;
     compressor.release.value = cfg.compRelease;
 
-    // 音高加强（听感 B）：presence 让人声更靠前清晰
+    // presence：人声更靠前清晰
     var presence = ctx.createBiquadFilter();
     presence.type = "peaking";
     presence.frequency.value = cfg.presenceHz;
     presence.gain.value = cfg.presenceDb;
     presence.Q.value = cfg.presenceQ;
 
-    // 音高加强（听感 B）：air 让高频更通透有光泽
+    // air：高频更通透
     var air = ctx.createBiquadFilter();
     air.type = "highshelf";
     air.frequency.value = cfg.airHz;
@@ -81,13 +85,17 @@
     var agcGain = ctx.createGain();
     agcGain.gain.value = 1;
 
-    // 末端限幅器：AGC 推高后收峰值，防数字削波
+    // 末端限幅：AGC 推高后收峰值
     var limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -3;
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
     limiter.attack.value = 0.002;
     limiter.release.value = 0.1;
+
+    // 干/湿输出增益（并联）
+    var wetOut = ctx.createGain();
+    var dryGain = ctx.createGain();
 
     // 在压缩后取样，用于 AGC（不送扬声器）
     var meter = ctx.createAnalyser();
@@ -116,15 +124,9 @@
       if (ctx.state !== "running") return;
 
       var rms = readRms();
-      var desired;
-      if (rms < cfg.silenceRms) {
-        // 近静音：缓慢回到 1，避免把底噪抬成沙沙声
-        desired = 1;
-      } else {
-        desired = cfg.targetRms / rms;
-        desired = clamp(desired, cfg.agcMin, cfg.agcMax);
-      }
-      // 湿声比例：wet=0 时等价增益 1
+      // 静音/暂停：保持当前增益，不往 1 回拉（避免刚恢复的响度被冲掉）
+      if (rms < cfg.silenceRms) return;
+      var desired = clamp(cfg.targetRms / rms, cfg.agcMin, cfg.agcMax);
       desired = 1 + (desired - 1) * cfg.wet;
       smoothGain += (desired - smoothGain) * cfg.agcSmooth;
       try {
@@ -134,7 +136,7 @@
 
     function startAgc() {
       if (agcTimer) return;
-      // 用 setInterval 而不用 rAF：锁屏/后台时 rAF 停摆，音乐却继续播
+      // setInterval：锁屏/后台时 rAF 停摆，音乐却继续播
       agcTimer = setInterval(agcTick, 120);
     }
 
@@ -145,6 +147,21 @@
       }
     }
 
+    /** 按 enabled 切换干/湿；immediate=true 首次接线无渐变 */
+    function applyBypass(immediate) {
+      var w = enabled ? 1 : 0;
+      var d = enabled ? 0 : 1;
+      try {
+        if (immediate) {
+          wetOut.gain.value = w;
+          dryGain.gain.value = d;
+        } else {
+          wetOut.gain.setTargetAtTime(w, ctx.currentTime, 0.03);
+          dryGain.gain.setTargetAtTime(d, ctx.currentTime, 0.03);
+        }
+      } catch (e) {}
+    }
+
     /**
      * 将 mediaElementSource 接到增强链，再输出到 masterGain（或 destination）
      * source 仍可另外 connect 到频谱 analyser
@@ -152,6 +169,7 @@
     function connectFrom(source, destination) {
       if (!source || !destination || connected) return connected;
       try {
+        // 湿路：滤波 → presence → air → 压缩 → AGC → 限幅
         source.connect(highpass);
         highpass.connect(lowpass);
         lowpass.connect(presence);
@@ -159,9 +177,15 @@
         air.connect(compressor);
         compressor.connect(agcGain);
         agcGain.connect(limiter);
-        limiter.connect(destination);
+        limiter.connect(wetOut);
+        wetOut.connect(destination);
+        // 干路：原声直通
+        source.connect(dryGain);
+        dryGain.connect(destination);
+        // AGC 计量（不送扬声器）
         compressor.connect(meter);
         connected = true;
+        applyBypass(true);
         startAgc();
       } catch (e) {
         connected = false;
@@ -177,13 +201,21 @@
           agcGain.gain.setTargetAtTime(1, ctx.currentTime, 0.05);
         } catch (e) {}
       }
+      if (connected) applyBypass(false);
     }
 
     function setWet(w) {
       cfg.wet = clamp(Number(w) || 0, 0, 1);
+      // wet=0 时也走干路，与 setEnabled(false) 一致
+      if (cfg.wet <= 0.001) {
+        enabled = false;
+        if (connected) applyBypass(false);
+      } else if (!enabled) {
+        enabled = true;
+        if (connected) applyBypass(false);
+      }
     }
 
-    // 音高加强（听感 B）运行时调节：presence/air 的 dB 数
     function setPresence(db) {
       cfg.presenceDb = Number(db) || 0;
       try {
@@ -219,6 +251,9 @@
       },
       get gain() {
         return smoothGain;
+      },
+      get enabled() {
+        return enabled;
       },
     };
   }

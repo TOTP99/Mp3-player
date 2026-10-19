@@ -174,6 +174,7 @@ class BGMusic {
     this._missing = new Set(); // 404/确认失败的曲号，选曲时跳过
     this._errorRetry = false;
     this._wantPlay = false; // 是否期望在播（供 interrupted 自动恢复）
+    this._loadTok = 0; // 换曲 token：作废过期的 loadedmetadata 进度恢复
 
     this.audio.addEventListener("ended", () => this._advance());
     // error：先 1.5s 后重试一次（网络瞬断），再失败才标记缺失跳过（#小问题）
@@ -450,18 +451,35 @@ class BGMusic {
   _loadTrack(num) {
     this.currentNum = num;
     this._errorRetry = false; // 换曲作废旧的重试计时
+    // 每次换曲递增 token：作废上一曲尚未触发的 loadedmetadata，防止旧进度盖到新曲
+    var loadTok = ++this._loadTok;
     try {
       localStorage.setItem("bgMusicCurrentNum", String(num));
     } catch (e) {}
     this.audio.src = new URL(`${num}.mp3`, BG_MUSIC_BASE).href;
     this.audio.loop = this.playMode === "single";
-    // 恢复本曲上次进度
+    // 恢复本曲上次进度：等 loadedmetadata 后再写 currentTime（否则部分浏览器会忽略）
+    var savedPos = 0;
     try {
-      var savedPos = parseFloat(localStorage.getItem("bgMusicPos_" + num) || "0");
-      if (savedPos > 1) {
-        this.audio.currentTime = savedPos;
-      }
+      savedPos = parseFloat(localStorage.getItem("bgMusicPos_" + num) || "0");
     } catch (e) {}
+    if (savedPos > 1) {
+      var self = this;
+      var onMeta = function () {
+        self.audio.removeEventListener("loadedmetadata", onMeta);
+        // 快速切歌：这个回调已过期，别动新曲
+        if (loadTok !== self._loadTok || self.currentNum !== num) return;
+        try {
+          if (
+            isFinite(self.audio.duration) &&
+            savedPos < self.audio.duration - 1.5
+          ) {
+            self.audio.currentTime = savedPos;
+          }
+        } catch (e) {}
+      };
+      this.audio.addEventListener("loadedmetadata", onMeta);
+    }
     if (this._enhancer && typeof this._enhancer.resetAgc === "function") {
       try {
         this._enhancer.resetAgc();
